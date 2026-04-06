@@ -19,14 +19,20 @@
     <p>Features include:</p>
     <ul>
       <li>Browse devices by category: Graphics, Networking, Storage, Audio, USB, and more</li>
-      <li>Live sensor readings with temperature, fan speed, and power monitoring</li>
+      <li>Live sensor readings with temperature, fan speed, voltage, and power monitoring</li>
       <li>GPU details including VRAM, clocks, PCIe link, and display outputs</li>
+      <li>Display and monitor info from EDID: model, resolution, refresh rate, and physical size</li>
       <li>Storage drive health with SMART data and NVMe temperature tracking</li>
-      <li>IOMMU group browser for virtualization planning</li>
+      <li>Network interface details including link speed, state, and wireless/Bluetooth detection</li>
       <li>CPU, memory module, and motherboard information</li>
+      <li>Camera, serial port, and USB debug probe detection</li>
+      <li>Security key, RGB controller, and portable device recognition</li>
       <li>Bluetooth device detection with battery monitoring</li>
+      <li>IOMMU group browser</li>
       <li>Kernel driver management (bind, unbind, change drivers)</li>
       <li>VBIOS dump for GPU passthrough</li>
+      <li>Live hotplug: devices appear and disappear as you plug them in</li>
+      <li>Search across all devices</li>
       <li>Adaptive layout for any screen size</li>
     </ul>
     <p>
