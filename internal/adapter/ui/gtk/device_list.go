@@ -73,8 +73,12 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 	listBox.SetMarginBottom(12)
 	listBox.Append(g.deviceListBox)
 
+	listClamp := adw.NewClamp()
+	listClamp.SetMaximumSize(700)
+	listClamp.SetChild(listBox)
+
 	scroll := gtk.NewScrolledWindow()
-	scroll.SetChild(listBox)
+	scroll.SetChild(listClamp)
 	scroll.SetVExpand(true)
 	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
 
@@ -91,8 +95,12 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 	g.iommuViewBox.SetMarginTop(12)
 	g.iommuViewBox.SetMarginBottom(12)
 
+	iommuClamp := adw.NewClamp()
+	iommuClamp.SetMaximumSize(700)
+	iommuClamp.SetChild(g.iommuViewBox)
+
 	iommuScroll := gtk.NewScrolledWindow()
-	iommuScroll.SetChild(g.iommuViewBox)
+	iommuScroll.SetChild(iommuClamp)
 	iommuScroll.SetVExpand(true)
 	iommuScroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
 
