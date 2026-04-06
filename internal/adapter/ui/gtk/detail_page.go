@@ -13,6 +13,7 @@ import (
 	"github.com/diamondburned/gotk4-adwaita/pkg/adw"
 	"github.com/diamondburned/gotk4/pkg/core/glib"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
+	"github.com/godbus/dbus/v5"
 )
 
 func (g *GtkUI) showDeviceDetail(node *domain.DeviceNode) {
@@ -156,7 +157,7 @@ func (g *GtkUI) buildDetailContent(node *domain.DeviceNode) (gtk.Widgetter, map[
 
 	// === Battery (peripherals) ===
 	if node.BatteryInfo != nil {
-		box.Append(g.buildBatteryGroup(node.BatteryInfo))
+		box.Append(g.buildBatteryGroup(node))
 	}
 
 	// === Technical Details (collapsed, PCI/USB only) ===
@@ -1004,41 +1005,140 @@ func (g *GtkUI) buildSMARTGroup(smart *domain.SMARTData) *adw.PreferencesGroup {
 	return group
 }
 
-func (g *GtkUI) buildBatteryGroup(battery *domain.BatteryInfo) *adw.PreferencesGroup {
+func batteryIconName(capacity int, status string) string {
+	switch {
+	case status == "Charging":
+		return "battery-level-80-charging-symbolic"
+	case capacity >= 80:
+		return "battery-level-80-symbolic"
+	case capacity >= 50:
+		return "battery-level-50-symbolic"
+	case capacity >= 20:
+		return "battery-level-20-symbolic"
+	default:
+		return "battery-level-0-symbolic"
+	}
+}
+
+func (g *GtkUI) buildBatteryGroup(node *domain.DeviceNode) *adw.PreferencesGroup {
+	battery := node.BatteryInfo
 	group := adw.NewPreferencesGroup()
 	group.SetTitle("Battery")
 
-	if battery.Capacity >= 0 {
-		row := adw.NewActionRow()
-		row.SetTitle("Charge")
-		row.SetSubtitle(fmt.Sprintf("%d%%", battery.Capacity))
+	var chargeRow *adw.ActionRow
+	var chargeIcon *gtk.Image
+	var statusRow *adw.ActionRow
 
-		var iconName string
-		switch {
-		case battery.Capacity >= 80:
-			iconName = "battery-level-80-symbolic"
-		case battery.Capacity >= 50:
-			iconName = "battery-level-50-symbolic"
-		case battery.Capacity >= 20:
-			iconName = "battery-level-20-symbolic"
-		default:
-			iconName = "battery-level-0-symbolic"
-		}
-		if battery.Status == "Charging" {
-			iconName = "battery-level-80-charging-symbolic"
-		}
-		icon := gtk.NewImageFromIconName(iconName)
-		row.AddPrefix(icon)
-		group.Add(row)
+	if battery.Capacity >= 0 {
+		chargeRow = adw.NewActionRow()
+		chargeRow.SetTitle("Charge")
+		chargeRow.SetSubtitle(fmt.Sprintf("%d%%", battery.Capacity))
+
+		chargeIcon = gtk.NewImageFromIconName(batteryIconName(battery.Capacity, battery.Status))
+		chargeRow.AddPrefix(chargeIcon)
+		group.Add(chargeRow)
 	} else if battery.CapacityLevel != "" {
 		addDetailRow(group, "Charge Level", battery.CapacityLevel)
 	}
 
 	if battery.Status != "" && battery.Status != "Connected" {
-		addDetailRow(group, "Status", battery.Status)
+		statusRow = adw.NewActionRow()
+		statusRow.SetTitle("Status")
+		statusRow.SetSubtitle(battery.Status)
+		group.Add(statusRow)
+	}
+
+	// Live UPower polling for UPS devices
+	if node.Class == domain.DeviceClassPower && node.Type == domain.DeviceTypeUSB {
+		// Extract USB address from node ID (e.g. "usb:5-2.4" -> "5-2.4")
+		usbAddr := strings.TrimPrefix(node.ID, "usb:")
+		upowerPath := findUPowerDevice(usbAddr)
+		if upowerPath != "" {
+			var sourceID glib.SourceHandle
+			group.ConnectMap(func() {
+				sourceID = glib.TimeoutSecondsAdd(5, func() bool {
+					pct, status := pollUPowerBattery(upowerPath)
+					if chargeRow != nil && pct >= 0 {
+						chargeRow.SetSubtitle(fmt.Sprintf("%d%%", pct))
+						chargeIcon.SetFromIconName(batteryIconName(pct, status))
+					}
+					if statusRow != nil && status != "" {
+						statusRow.SetSubtitle(status)
+					}
+					return true
+				})
+			})
+			group.ConnectUnmap(func() {
+				if sourceID > 0 {
+					glib.SourceRemove(sourceID)
+					sourceID = 0
+				}
+			})
+		}
 	}
 
 	return group
+}
+
+// findUPowerDevice finds the UPower D-Bus object path for a USB device
+// by matching the USB address (e.g. "5-2.4") in the native sysfs path.
+func findUPowerDevice(usbAddr string) dbus.ObjectPath {
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return ""
+	}
+
+	obj := conn.Object("org.freedesktop.UPower", "/org/freedesktop/UPower")
+	var devicePaths []dbus.ObjectPath
+	if err := obj.Call("org.freedesktop.UPower.EnumerateDevices", 0).Store(&devicePaths); err != nil {
+		return ""
+	}
+
+	for _, path := range devicePaths {
+		devObj := conn.Object("org.freedesktop.UPower", path)
+		native, err := devObj.GetProperty("org.freedesktop.UPower.Device.NativePath")
+		if err != nil {
+			continue
+		}
+		if n, ok := native.Value().(string); ok && strings.Contains(n, "/"+usbAddr+"/") {
+			return path
+		}
+	}
+	return ""
+}
+
+var upowerStateNames = map[uint32]string{
+	1: "Charging",
+	2: "Discharging",
+	3: "Empty",
+	4: "Fully charged",
+	5: "Pending charge",
+	6: "Pending discharge",
+}
+
+func pollUPowerBattery(path dbus.ObjectPath) (int, string) {
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return -1, ""
+	}
+
+	devObj := conn.Object("org.freedesktop.UPower", path)
+
+	pct := -1
+	if v, err := devObj.GetProperty("org.freedesktop.UPower.Device.Percentage"); err == nil {
+		if p, ok := v.Value().(float64); ok {
+			pct = int(p)
+		}
+	}
+
+	status := ""
+	if v, err := devObj.GetProperty("org.freedesktop.UPower.Device.State"); err == nil {
+		if st, ok := v.Value().(uint32); ok {
+			status = upowerStateNames[st]
+		}
+	}
+
+	return pct, status
 }
 
 func (g *GtkUI) buildTechnicalDetailsGroup(node *domain.DeviceNode) *adw.PreferencesGroup {
