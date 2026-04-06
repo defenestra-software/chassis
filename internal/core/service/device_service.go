@@ -91,6 +91,7 @@ func (s *DeviceService) GetDeviceTree() (*domain.DeviceNode, error) {
 		s.sysInfoScanner.EnrichSerialPorts(tree)
 		s.sysInfoScanner.EnrichNetworkInfo(tree)
 		s.sysInfoScanner.EnrichPeripheralBatteries(tree)
+		s.sysInfoScanner.EnrichUPSBattery(tree)
 		s.sysInfoScanner.EnrichUSBStorage(tree)
 	}
 

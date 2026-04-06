@@ -803,3 +803,83 @@ func (s *Scanner) attachBatteryByPath(node *domain.DeviceNode, usbAddr string, b
 	}
 	return false
 }
+
+// EnrichUPSBattery queries UPower over D-Bus for UPS devices and attaches
+// battery info to matching USB device nodes.
+func (s *Scanner) EnrichUPSBattery(root *domain.DeviceNode) {
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return
+	}
+
+	obj := conn.Object("org.freedesktop.UPower", "/org/freedesktop/UPower")
+	var devicePaths []dbus.ObjectPath
+	err = obj.Call("org.freedesktop.UPower.EnumerateDevices", 0).Store(&devicePaths)
+	if err != nil {
+		return
+	}
+
+	for _, path := range devicePaths {
+		devObj := conn.Object("org.freedesktop.UPower", path)
+
+		// Type 3 = UPS in UPower
+		devType, err := devObj.GetProperty("org.freedesktop.UPower.Device.Type")
+		if err != nil {
+			continue
+		}
+		if t, ok := devType.Value().(uint32); !ok || t != 3 {
+			continue
+		}
+
+		nativePath, err := devObj.GetProperty("org.freedesktop.UPower.Device.NativePath")
+		if err != nil {
+			continue
+		}
+		native, _ := nativePath.Value().(string)
+
+		percentage, _ := devObj.GetProperty("org.freedesktop.UPower.Device.Percentage")
+		pct := -1
+		if p, ok := percentage.Value().(float64); ok {
+			pct = int(p)
+		}
+
+		// UPower state: 1=charging, 2=discharging, 3=empty, 4=fully-charged, 5=pending-charge, 6=pending-discharge
+		stateVal, _ := devObj.GetProperty("org.freedesktop.UPower.Device.State")
+		status := ""
+		if st, ok := stateVal.Value().(uint32); ok {
+			switch st {
+			case 1:
+				status = "Charging"
+			case 2:
+				status = "Discharging"
+			case 3:
+				status = "Empty"
+			case 4:
+				status = "Fully charged"
+			case 5:
+				status = "Pending charge"
+			case 6:
+				status = "Pending discharge"
+			}
+		}
+
+		battery := &domain.BatteryInfo{
+			Capacity: pct,
+			Status:   status,
+		}
+
+		// Extract USB device address from native path by walking backwards
+		// through path segments (same approach as findParentUSBAddress)
+		usbDevPattern := regexp.MustCompile(`^\d+-[\d.]+$`)
+		parts := strings.Split(native, "/")
+		for i := len(parts) - 1; i >= 0; i-- {
+			if usbDevPattern.MatchString(parts[i]) {
+				targetID := "usb:" + parts[i]
+				if s.attachBattery(root, targetID, battery) {
+					s.logger.Debug("attached UPS battery from UPower", "device", targetID, "percentage", pct)
+				}
+				break
+			}
+		}
+	}
+}

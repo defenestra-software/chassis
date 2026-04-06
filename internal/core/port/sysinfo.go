@@ -14,5 +14,6 @@ type SysInfoScanner interface {
 	EnrichSerialPorts(root *domain.DeviceNode)
 	EnrichNetworkInfo(root *domain.DeviceNode)
 	EnrichPeripheralBatteries(root *domain.DeviceNode)
+	EnrichUPSBattery(root *domain.DeviceNode)
 	EnrichUSBStorage(root *domain.DeviceNode)
 }
