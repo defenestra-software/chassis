@@ -6,6 +6,7 @@
 - Bugfix misclassification of Cyberpower and other UPS
 - Added battery information using UPower to the power device details page with live monitoring
 - Clamped root device pages to make the appearance more unified
+- Enable system service to be optional and skipped if the user does not want to install it.
 
 ## v0.1.0
 

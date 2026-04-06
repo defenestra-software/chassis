@@ -307,7 +307,13 @@ func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 			cmd := exec.Command(exe, "--setup")
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			_ = cmd.Run()
+			if err := cmd.Run(); err == nil {
+				glib.IdleAdd(func() {
+					toast := adw.NewToast("Service installed. Restart Chassis for full functionality.")
+					toast.SetTimeout(0)
+					g.toast.AddToast(toast)
+				})
+			}
 		}()
 	})
 	g.registerAction("about", func() {
