@@ -1,0 +1,48 @@
+<node>
+  <interface name="io.defenestra.Chassis">
+    <method name="Unbind">
+      <arg name="device_id" type="s" direction="in"/>
+      <arg name="bus_type" type="s" direction="in"/>
+    </method>
+
+    <method name="Bind">
+      <arg name="device_id" type="s" direction="in"/>
+      <arg name="driver_name" type="s" direction="in"/>
+    </method>
+
+    <method name="DriverProbe">
+      <arg name="device_id" type="s" direction="in"/>
+    </method>
+
+    <method name="LoadModule">
+      <arg name="module_name" type="s" direction="in"/>
+    </method>
+
+    <method name="UnloadModule">
+      <arg name="module_name" type="s" direction="in"/>
+    </method>
+
+    <method name="Ping">
+      <arg name="reply" type="s" direction="out"/>
+    </method>
+
+    <method name="ReadSMART">
+      <arg name="block_device" type="s" direction="in"/>
+      <arg name="json_data" type="s" direction="out"/>
+    </method>
+
+    <method name="ReadSystemInfo">
+      <arg name="json_data" type="s" direction="out"/>
+    </method>
+
+    <method name="DumpVBIOS">
+      <arg name="pci_address" type="s" direction="in"/>
+      <arg name="rom_data" type="ay" direction="out"/>
+    </method>
+
+    <signal name="DeviceChanged">
+      <arg name="device_id" type="s"/>
+      <arg name="action" type="s"/>
+    </signal>
+  </interface>
+</node>

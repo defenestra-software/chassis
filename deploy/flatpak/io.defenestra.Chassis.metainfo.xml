@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.defenestra.Chassis</id>
+  <name>Chassis</name>
+  <summary>Device Manager for Linux</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <developer id="io.defenestra">
+    <name>Defenestra, LLC</name>
+  </developer>
+
+  <description>
+    <p>
+      Chassis is a graphical device manager for Linux that lets you browse,
+      inspect, and manage your hardware. View detailed information about all
+      system devices, including GPUs, storage drives, sensors, and network
+      adapters.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Browse devices by category: Graphics, Networking, Storage, Audio, USB, and more</li>
+      <li>Live sensor readings with temperature, fan speed, and power monitoring</li>
+      <li>GPU details including VRAM, clocks, PCIe link, and display outputs</li>
+      <li>Storage drive health with SMART data and NVMe temperature tracking</li>
+      <li>IOMMU group browser for virtualization planning</li>
+      <li>CPU, memory module, and motherboard information</li>
+      <li>Bluetooth device detection with battery monitoring</li>
+      <li>Kernel driver management (bind, unbind, change drivers)</li>
+      <li>VBIOS dump for GPU passthrough</li>
+      <li>Adaptive layout for any screen size</li>
+    </ul>
+    <p>
+      Most features work without elevated privileges. A system daemon provides
+      additional capabilities including driver management, SMART data, and
+      SMBIOS information.
+    </p>
+  </description>
+
+  <categories>
+    <category>System</category>
+    <category>HardwareSettings</category>
+  </categories>
+
+  <launchable type="desktop-id">io.defenestra.Chassis.desktop</launchable>
+
+  <url type="homepage">https://defenestra.io</url>
+  <url type="help">https://wiki.defenestra.io/</url>
+  <url type="bugtracker">https://forum.defenestra.io/</url>
+
+  <content_rating type="oars-1.1">
+  </content_rating>
+
+  <releases>
+    <release version="v0.0.0" date="2026-04-03">
+      <description>
+        <p>Initial release with comprehensive hardware detection and monitoring.</p>
+      </description>
+    </release>
+  </releases>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+
+  <provides>
+    <binary>chassis</binary>
+  </provides>
+
+  <keywords>
+    <keyword>device</keyword>
+    <keyword>hardware</keyword>
+    <keyword>device manager</keyword>
+    <keyword>GPU</keyword>
+    <keyword>sensor</keyword>
+    <keyword>temperature</keyword>
+    <keyword>IOMMU</keyword>
+    <keyword>driver</keyword>
+    <keyword>PCI</keyword>
+    <keyword>USB</keyword>
+    <keyword>SMART</keyword>
+    <keyword>NVMe</keyword>
+  </keywords>
+</component>

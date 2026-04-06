@@ -1,0 +1,1171 @@
+package gtk
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
+	"defenestra.io/chassis/internal/core/domain"
+
+	kit "gitlab.com/defenestra-software/go-adw-kit"
+
+	"github.com/diamondburned/gotk4-adwaita/pkg/adw"
+	"github.com/diamondburned/gotk4/pkg/core/glib"
+	"github.com/diamondburned/gotk4/pkg/gtk/v4"
+)
+
+func (g *GtkUI) showDeviceDetail(node *domain.DeviceNode) {
+	g.showDeviceDetailScrollTo(node, "")
+}
+
+func (g *GtkUI) showDeviceDetailScrollTo(node *domain.DeviceNode, scrollTo string) {
+	content, scrollTargets := g.buildDetailContent(node)
+
+	scroll := gtk.NewScrolledWindow()
+	scroll.SetChild(content)
+	scroll.SetVExpand(true)
+	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
+
+	headerBar := adw.NewHeaderBar()
+	kit.PatchHeaderBar(headerBar, g.window)
+
+	toolbarView := adw.NewToolbarView()
+	toolbarView.AddTopBar(headerBar)
+	toolbarView.SetContent(scroll)
+
+	page := adw.NewNavigationPage(toolbarView, node.DisplayName())
+	g.navView.Push(page)
+	g.onDetailPage = true
+
+	// Auto-scroll to the target section after the page is realized.
+	// We delay slightly to let GTK finish layout before scrolling.
+	if scrollTo != "" {
+		if target, ok := scrollTargets[scrollTo]; ok {
+			glib.TimeoutSecondsAdd(0, func() bool {
+				// ScrollTo by finding the widget's Y allocation
+				if w, ok := target.(*adw.PreferencesGroup); ok {
+					alloc := w.Allocation()
+					adj := scroll.VAdjustment()
+					if adj != nil {
+						adj.SetValue(float64(alloc.Y()))
+					}
+				} else if w, ok := target.(*gtk.Box); ok {
+					alloc := w.Allocation()
+					adj := scroll.VAdjustment()
+					if adj != nil {
+						adj.SetValue(float64(alloc.Y()))
+					}
+				}
+				return false // Run once
+			})
+		}
+	}
+}
+
+func (g *GtkUI) buildDetailContent(node *domain.DeviceNode) (gtk.Widgetter, map[string]gtk.Widgetter) {
+	box := gtk.NewBox(gtk.OrientationVertical, 18)
+	box.SetMarginTop(24)
+	box.SetMarginBottom(24)
+	box.SetMarginStart(24)
+	box.SetMarginEnd(24)
+
+	scrollTargets := make(map[string]gtk.Widgetter)
+
+	// Title area with icon
+	titleBox := gtk.NewBox(gtk.OrientationHorizontal, 16)
+	titleBox.SetMarginBottom(12)
+
+	titleIcon := gtk.NewImageFromIconName(g.getIconName(node))
+	titleIcon.SetIconSize(gtk.IconSizeLarge)
+	titleBox.Append(titleIcon)
+
+	titleLabel := gtk.NewLabel(node.DisplayName())
+	titleLabel.AddCSSClass("title-1")
+	titleLabel.SetHAlign(gtk.AlignStart)
+	titleLabel.SetHExpand(true)
+	titleLabel.SetWrap(true)
+	titleLabel.SetWrapMode(2) // WORD_CHAR
+	titleBox.Append(titleLabel)
+	box.Append(titleBox)
+
+	// === Interface sections - iterate all interfaces on this device ===
+	if len(node.Interfaces) > 0 {
+		seen := map[string]bool{}
+		for _, iface := range node.Interfaces {
+			// Skip GPU display interfaces on the device page - they're for the
+			// sidebar category only. The GPU's Graphics section already shows
+			// Display Outputs with cross-links.
+			if iface.Type == domain.InterfaceDisplay && node.GPUInfo != nil {
+				continue
+			}
+
+			// Skip duplicate section tags (e.g., multiple "general" fallbacks)
+			if seen[iface.ScrollTag] {
+				continue
+			}
+			seen[iface.ScrollTag] = true
+
+			section := g.buildInterfaceSection(node, iface)
+			if section != nil {
+				box.Append(section)
+				scrollTargets[iface.ScrollTag] = section
+			}
+		}
+	} else {
+		// Fallback for devices without interfaces (shouldn't happen after extraction)
+		box.Append(g.buildGeneralInfoGroup(node))
+	}
+
+	// === IOMMU Group (PCI only) ===
+	if node.IOMMUGroup >= 0 && node.Type == domain.DeviceTypePCI {
+		box.Append(g.buildIOMMUGroupSection(node))
+	}
+
+	// === Device paths - only show paths not already covered by interface sections ===
+	shownPaths := map[string]bool{}
+	for _, iface := range node.Interfaces {
+		for _, p := range iface.DevicePaths {
+			shownPaths[p] = true
+		}
+	}
+	var extraPaths []string
+	for _, p := range node.DevicePaths {
+		if !shownPaths[p] {
+			extraPaths = append(extraPaths, p)
+		}
+	}
+	if len(extraPaths) > 0 {
+		pathsGroup := adw.NewPreferencesGroup()
+		if len(extraPaths) == 1 {
+			addDetailRow(pathsGroup, "Device", extraPaths[0])
+		} else {
+			expander := adw.NewExpanderRow()
+			expander.SetTitle("Paths")
+			expander.SetSubtitle(fmt.Sprintf("%d device paths", len(extraPaths)))
+			for _, p := range extraPaths {
+				row := adw.NewActionRow()
+				row.SetTitle(p)
+				row.SetSubtitleSelectable(true)
+				expander.AddRow(row)
+			}
+			pathsGroup.Add(expander)
+		}
+		box.Append(pathsGroup)
+	}
+
+	// === Battery (peripherals) ===
+	if node.BatteryInfo != nil {
+		box.Append(g.buildBatteryGroup(node.BatteryInfo))
+	}
+
+	// === Technical Details (collapsed, PCI/USB only) ===
+	if node.Type == domain.DeviceTypePCI || node.Type == domain.DeviceTypeUSB {
+		box.Append(g.buildTechnicalDetailsGroup(node))
+	}
+
+	// === Hardware Resources (collapsed, PCI only) ===
+	if node.Resources != nil && node.Type == domain.DeviceTypePCI {
+		if resGroup := g.buildResourcesGroup(node.Resources); resGroup != nil {
+			box.Append(resGroup)
+		}
+	}
+
+	// === Actions (PCI/USB, daemon connected, not virtual root hubs) ===
+	if g.driverMgmtEnabled && (node.Type == domain.DeviceTypePCI || node.Type == domain.DeviceTypeUSB) &&
+		!strings.HasPrefix(node.ID, "usb:usb") {
+		box.Append(g.buildActionButtons(node))
+	}
+
+	clamp := adw.NewClamp()
+	clamp.SetMaximumSize(700)
+	clamp.SetChild(box)
+
+	return clamp, scrollTargets
+}
+
+// buildInterfaceSection builds the appropriate detail section for a device interface.
+func (g *GtkUI) buildInterfaceSection(node *domain.DeviceNode, iface *domain.DeviceInterface) gtk.Widgetter {
+	switch {
+	case iface.ProcessorInfo != nil:
+		// Processor gets two sections - info + cache
+		box := gtk.NewBox(gtk.OrientationVertical, 18)
+		box.Append(g.buildProcessorInfoGroup(iface.ProcessorInfo))
+		if cacheGroup := g.buildProcessorCacheGroup(iface.ProcessorInfo); cacheGroup != nil {
+			box.Append(cacheGroup)
+		}
+		return box
+
+	case iface.GPUInfo != nil:
+		gpuBox := gtk.NewBox(gtk.OrientationVertical, 18)
+		gpuBox.Append(g.buildGPUInfoGroup(node))
+		// Add Display Outputs section with cross-links to displays
+		if len(node.GPUInfo.Monitors) > 0 {
+			gpuBox.Append(g.buildMonitorsGroup(node.GPUInfo))
+		}
+		return gpuBox
+
+	case iface.StorageInfo != nil:
+		box := gtk.NewBox(gtk.OrientationVertical, 18)
+		box.Append(g.buildStorageInfoGroup(iface.StorageInfo))
+		if iface.StorageInfo.SMART != nil {
+			box.Append(g.buildSMARTGroup(iface.StorageInfo.SMART))
+		}
+		return box
+
+	case iface.NetworkInfo != nil:
+		return g.buildNetworkInfoGroup(node)
+
+	case iface.DisplayInfo != nil:
+		box := gtk.NewBox(gtk.OrientationVertical, 18)
+		box.Append(g.buildDisplayInfoGroup(iface.DisplayInfo))
+		if modesGroup := g.buildDisplayModesGroup(iface.DisplayInfo); modesGroup != nil {
+			box.Append(modesGroup)
+		}
+		return box
+
+	case iface.MotherboardInfo != nil:
+		box := gtk.NewBox(gtk.OrientationVertical, 18)
+		box.Append(g.buildMotherboardInfoGroup(iface.MotherboardInfo))
+		if biosGroup := g.buildBIOSInfoGroup(iface.MotherboardInfo); biosGroup != nil {
+			box.Append(biosGroup)
+		}
+		return box
+
+	case iface.MemoryModule != nil:
+		return g.buildMemoryModuleGroup(iface.MemoryModule)
+
+	case len(iface.SensorData) > 0:
+		// Build a sensor readings group using the interface's sensor data
+		sensorNode := &domain.DeviceNode{
+			SensorReadings: iface.SensorData,
+			Path:           node.Path,
+		}
+		return g.buildSensorReadingsGroupTitle(sensorNode, iface.SectionTitle)
+
+	case iface.Type == domain.InterfaceDebug:
+		// Debug device section
+		group := adw.NewPreferencesGroup()
+		group.SetTitle(iface.SectionTitle)
+		addDetailRow(group, "Type", "Vendor-specific debug interface")
+		if node.Driver != "" {
+			addDetailRow(group, "Driver", node.Driver)
+		}
+		return group
+
+	case len(iface.DevicePaths) > 0 && iface.Type == domain.InterfaceSerial:
+		// Serial device section - show ports and symlinks
+		group := adw.NewPreferencesGroup()
+		group.SetTitle(iface.SectionTitle)
+		for _, p := range iface.DevicePaths {
+			label := "Port"
+			if strings.Contains(p, "/serial/by-id/") {
+				label = "By ID"
+			} else if strings.Contains(p, "/serial/by-path/") {
+				label = "By Path"
+			}
+			addDetailRow(group, label, p)
+		}
+		return group
+
+	default:
+		// Fallback: use the section title or general info
+		if iface.Type == domain.InterfaceUSB && strings.HasPrefix(node.ID, "usb:usb") {
+			group := adw.NewPreferencesGroup()
+			group.SetTitle("USB Host Controller")
+			addDetailRow(group, "Type", node.Name)
+			addDetailRow(group, "Driver", node.Driver)
+			return group
+		}
+		if strings.HasPrefix(node.ID, "bt-hid:") {
+			return g.buildBluetoothHIDGroup(node)
+		}
+		return g.buildGeneralInfoGroup(node)
+	}
+}
+
+// buildMonitorsSection builds the GPU display outputs with cross-links.
+// This is called as a separate section, not from an interface.
+func (g *GtkUI) buildMonitorsSection(node *domain.DeviceNode) gtk.Widgetter {
+	if node.GPUInfo == nil || len(node.GPUInfo.Monitors) == 0 {
+		return nil
+	}
+	return g.buildMonitorsGroup(node.GPUInfo)
+}
+
+func (g *GtkUI) buildProcessorInfoGroup(info *domain.ProcessorInfo) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Processor")
+
+	addDetailRow(group, "Model", info.ModelName)
+
+	vendor := info.Vendor
+	switch vendor {
+	case "AuthenticAMD":
+		vendor = "AMD"
+	case "GenuineIntel":
+		vendor = "Intel"
+	}
+	addDetailRow(group, "Vendor", vendor)
+
+	addDetailRow(group, "Architecture", info.Architecture)
+
+	if info.Cores > 0 {
+		addDetailRow(group, "Cores / Threads", info.CoreString())
+	}
+
+	if info.MaxFreqMHz > 0 {
+		freqStr := info.FreqString()
+		if info.MinFreqMHz > 0 {
+			freqStr = fmt.Sprintf("%.0f MHz – %s", info.MinFreqMHz, freqStr)
+		}
+		addDetailRow(group, "Frequency", freqStr)
+	}
+
+	if info.BogoMIPS > 0 {
+		addDetailRow(group, "BogoMIPS", fmt.Sprintf("%.2f", info.BogoMIPS))
+	}
+
+	if info.Family != "" {
+		addDetailRow(group, "Family / Model / Stepping",
+			fmt.Sprintf("%s / %s / %s", info.Family, info.Model, info.Stepping))
+	}
+
+	if info.Microcode != "" {
+		addDetailRow(group, "Microcode", info.Microcode)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildProcessorCacheGroup(info *domain.ProcessorInfo) *adw.PreferencesGroup {
+	summary := info.CacheSummary()
+	if summary == "" {
+		return nil
+	}
+
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Cache")
+
+	if info.CacheL1d > 0 {
+		addDetailRow(group, "L1 Data", formatCacheSize(info.CacheL1d))
+	}
+	if info.CacheL1i > 0 {
+		addDetailRow(group, "L1 Instruction", formatCacheSize(info.CacheL1i))
+	}
+	if info.CacheL2 > 0 {
+		addDetailRow(group, "L2", formatCacheSize(info.CacheL2))
+	}
+	if info.CacheL3 > 0 {
+		addDetailRow(group, "L3", formatCacheSize(info.CacheL3))
+	}
+
+	return group
+}
+
+func formatCacheSize(bytes uint64) string {
+	if bytes >= 1024*1024 {
+		return fmt.Sprintf("%d MB", bytes/(1024*1024))
+	}
+	return fmt.Sprintf("%d KB", bytes/1024)
+}
+
+func (g *GtkUI) buildDisplayInfoGroup(info *domain.DisplayInfo) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Display")
+
+	addDetailRow(group, "Manufacturer", info.Vendor)
+	addDetailRow(group, "Model", info.MonitorName)
+
+	if sz := info.SizeString(); sz != "" {
+		addDetailRow(group, "Screen Size", sz)
+	}
+
+	addDetailRow(group, "Resolution", info.CurrentMode)
+
+	if r := info.RefreshString(); r != "" {
+		addDetailRow(group, "Refresh Rate", r)
+	}
+
+	connStr := info.ConnectorType
+	if info.ConnectorIndex != "" {
+		connStr = fmt.Sprintf("%s-%s", connStr, info.ConnectorIndex)
+	}
+	addDetailRow(group, "Connection", connStr)
+	// GPU link - clickable to navigate to the GPU detail page
+	gpuRow := adw.NewActionRow()
+	gpuRow.SetTitle("GPU")
+	// Show GPU name instead of "card1"
+	gpuName := info.GPUCard
+	cardIndex := strings.TrimPrefix(info.GPUCard, "card")
+	g.mu.RLock()
+	for _, dev := range g.deviceMap {
+		if dev.GPUInfo != nil && fmt.Sprintf("%d", dev.GPUInfo.CardIndex) == cardIndex {
+			gpuName = dev.DisplayName()
+			break
+		}
+	}
+	g.mu.RUnlock()
+	gpuRow.SetSubtitle(gpuName)
+	gpuRow.SetSubtitleSelectable(true)
+	gpuRow.SetActivatable(true)
+	gpuRow.ConnectActivated(func() {
+		// Find the GPU device by matching the DRM card index
+		g.navigateToGPUByCard(cardIndex)
+	})
+	chevron := gtk.NewImageFromIconName("go-next-symbolic")
+	chevron.AddCSSClass("dim-label")
+	gpuRow.AddSuffix(chevron)
+	group.Add(gpuRow)
+
+	if info.Serial != "" && info.Serial != "0000000000001" {
+		addDetailRow(group, "Serial", info.Serial)
+	}
+
+	if m := info.ManufactureString(); m != "" {
+		addDetailRow(group, "Manufactured", m)
+	}
+
+	addDetailRow(group, "EDID Version", info.EDIDVersion)
+
+	return group
+}
+
+func (g *GtkUI) buildDisplayModesGroup(info *domain.DisplayInfo) *adw.PreferencesGroup {
+	if len(info.Modes) == 0 {
+		return nil
+	}
+
+	group := adw.NewPreferencesGroup()
+
+	expander := adw.NewExpanderRow()
+	expander.SetTitle("Supported Resolutions")
+	expander.SetSubtitle(fmt.Sprintf("%d resolutions", info.ModeCount))
+
+	// Deduplicate modes (sysfs lists duplicates for different timings)
+	seen := map[string]bool{}
+	for _, mode := range info.Modes {
+		if seen[mode] {
+			continue
+		}
+		seen[mode] = true
+		row := adw.NewActionRow()
+		row.SetTitle(mode)
+		expander.AddRow(row)
+	}
+
+	group.Add(expander)
+	return group
+}
+
+func (g *GtkUI) buildMotherboardInfoGroup(info *domain.MotherboardInfo) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Motherboard")
+
+	addDetailRow(group, "Vendor", info.Vendor)
+	addDetailRow(group, "Model", info.Product)
+	if info.Version != "" && info.Version != "Not Applicable" {
+		addDetailRow(group, "Version", info.Version)
+	}
+	addDetailRow(group, "Serial Number", info.SerialNumber)
+
+	if info.TotalMemoryBytes > 0 {
+		memStr := info.TotalMemoryString()
+		if info.MemoryModules > 0 {
+			memStr = fmt.Sprintf("%s (%d modules)", memStr, info.MemoryModules)
+		}
+		addDetailRow(group, "Total Installed Memory", memStr)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildBIOSInfoGroup(info *domain.MotherboardInfo) *adw.PreferencesGroup {
+	if info.BIOSVendor == "" && info.BIOSVersion == "" {
+		return nil
+	}
+
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Firmware / BIOS")
+
+	addDetailRow(group, "Vendor", info.BIOSVendor)
+	addDetailRow(group, "Version", info.BIOSVersion)
+	addDetailRow(group, "Date", info.BIOSDate)
+
+	return group
+}
+
+func (g *GtkUI) buildMemoryModuleGroup(mod *domain.MemoryModuleInfo) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Memory Module")
+
+	if mod.SizeString_ != "" {
+		addDetailRow(group, "Capacity", mod.SizeString_)
+	} else {
+		addDetailRow(group, "Capacity", mod.SizeString())
+	}
+	addDetailRow(group, "Slot", mod.Label)
+	if mod.Type != "" && mod.Type != "Unknown" {
+		addDetailRow(group, "Type", mod.Type)
+	}
+	if mod.Speed != "" && mod.Speed != "Unknown" {
+		addDetailRow(group, "Speed", mod.Speed)
+	}
+	addDetailRow(group, "Vendor", mod.Vendor)
+	if mod.PartNumber != "" {
+		addDetailRow(group, "Part Number", mod.PartNumber)
+	}
+	addDetailRow(group, "Serial Number", mod.SerialNumber)
+	if mod.Rank != "" && mod.Rank != "Unknown" {
+		addDetailRow(group, "Rank", mod.Rank)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildNetworkInfoGroup(node *domain.DeviceNode) *adw.PreferencesGroup {
+	net := node.NetworkInfo
+	group := adw.NewPreferencesGroup()
+
+	if net.IsBluetooth {
+		group.SetTitle("Bluetooth")
+	} else if net.IsWireless {
+		group.SetTitle("Wireless")
+	} else {
+		group.SetTitle("Network")
+	}
+
+	addDetailRow(group, "Vendor", node.Vendor)
+	addDetailRow(group, "Product", node.Product)
+
+	addDetailRow(group, "Interface", net.InterfaceName)
+	addDetailRow(group, "MAC Address", net.MACAddress)
+
+	if net.State != "" && net.State != "unknown" {
+		stateStr := net.State
+		switch stateStr {
+		case "up":
+			stateStr = "Connected"
+		case "down":
+			stateStr = "Disconnected"
+		case "dormant":
+			stateStr = "Dormant"
+		}
+		addDetailRow(group, "Status", stateStr)
+	}
+
+	if net.Speed != "" && net.Speed != "-1" && net.Speed != "unknown" {
+		addDetailRow(group, "Link Speed", net.Speed)
+	}
+
+	if net.Duplex != "" && net.Duplex != "unknown" && net.Duplex != "Unknown!" {
+		addDetailRow(group, "Duplex", net.Duplex)
+	}
+
+	if net.MTU != "" && net.MTU != "0" {
+		addDetailRow(group, "MTU", net.MTU)
+	}
+
+	if node.VendorID != "" && node.ProductID != "" {
+		addDetailRow(group, "VID:PID", fmt.Sprintf("%s:%s", node.VendorID, node.ProductID))
+	}
+
+	if node.Driver != "" {
+		addDetailRow(group, "Driver", node.Driver)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildSensorReadingsGroup(node *domain.DeviceNode) *adw.PreferencesGroup {
+	return g.buildSensorReadingsGroupTitle(node, "Sensors")
+}
+
+func (g *GtkUI) buildSensorReadingsGroupTitle(node *domain.DeviceNode, title string) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle(title)
+
+	type sensorRow struct {
+		sensor *domain.SensorInfo
+		row    *adw.ActionRow
+	}
+	var liveRows []sensorRow
+
+	addSensorRow := func(s *domain.SensorInfo) {
+		row := adw.NewActionRow()
+		row.SetTitle(s.Label)
+		row.SetSubtitleSelectable(true)
+
+		value := s.FormattedValue()
+		if s.Type == "temperature" {
+			if t := s.ThresholdString(); t != "" {
+				value = fmt.Sprintf("%s (%s)", value, t)
+			}
+		}
+		row.SetSubtitle(value)
+		group.Add(row)
+
+		if s.HWMonPath != "" {
+			liveRows = append(liveRows, sensorRow{sensor: s, row: row})
+		}
+	}
+
+	// Group readings by type
+	for _, s := range node.SensorReadings {
+		if s.Type == "temperature" {
+			addSensorRow(s)
+		}
+	}
+	for _, s := range node.SensorReadings {
+		if s.Type == "fan" {
+			addSensorRow(s)
+		}
+	}
+	for _, s := range node.SensorReadings {
+		if s.Type == "voltage" {
+			addSensorRow(s)
+		}
+	}
+	for _, s := range node.SensorReadings {
+		if s.Type == "power" {
+			addSensorRow(s)
+		}
+	}
+
+	if node.Driver != "" {
+		addDetailRow(group, "Device", node.Driver)
+	}
+
+	// Live update: refresh sensor values every 3 seconds while page is visible
+	if len(liveRows) > 0 {
+		var sourceID glib.SourceHandle
+		firstRow := liveRows[0].row
+		firstRow.ConnectMap(func() {
+			sourceID = glib.TimeoutSecondsAdd(3, func() bool {
+				for _, sr := range liveRows {
+					raw := readSysfsForUI(sr.sensor.HWMonPath)
+					if raw == "" {
+						continue
+					}
+					rawVal, err := strconv.ParseFloat(raw, 64)
+					if err != nil {
+						continue
+					}
+					// hwmon values: temps in millidegrees, voltages in millivolts,
+					// fans in RPM (no conversion), power in microwatts
+					switch sr.sensor.Type {
+					case "temperature":
+						sr.sensor.Value = rawVal / 1000
+					case "voltage":
+						sr.sensor.Value = rawVal / 1000
+					case "power":
+						sr.sensor.Value = rawVal / 1000000
+					default:
+						sr.sensor.Value = rawVal
+					}
+					value := sr.sensor.FormattedValue()
+					if sr.sensor.Type == "temperature" {
+						if t := sr.sensor.ThresholdString(); t != "" {
+							value = fmt.Sprintf("%s (%s)", value, t)
+						}
+					}
+					sr.row.SetSubtitle(value)
+				}
+				return true
+			})
+		})
+		firstRow.ConnectUnmap(func() {
+			if sourceID > 0 {
+				glib.SourceRemove(sourceID)
+				sourceID = 0
+			}
+		})
+	}
+
+	return group
+}
+
+// readSysfsForUI reads a hwmon value and returns it as a float-compatible string.
+func readSysfsForUI(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func (g *GtkUI) buildBluetoothHIDGroup(node *domain.DeviceNode) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Bluetooth Device")
+
+	addDetailRow(group, "Vendor", node.Vendor)
+	addDetailRow(group, "Connection", "Bluetooth")
+
+	if node.VendorID != "" && node.ProductID != "" {
+		addDetailRow(group, "VID:PID", fmt.Sprintf("%s:%s", node.VendorID, node.ProductID))
+	}
+
+	addDetailRow(group, "Driver", node.Driver)
+
+	return group
+}
+
+func (g *GtkUI) buildGeneralInfoGroup(node *domain.DeviceNode) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("General")
+
+	if node.Vendor != "" {
+		addDetailRow(group, "Vendor", node.Vendor)
+	}
+
+	if node.Product != "" {
+		addDetailRow(group, "Product", node.Product)
+	}
+
+	if node.VendorID != "" && node.ProductID != "" {
+		addDetailRow(group, "VID:PID", fmt.Sprintf("%s:%s", node.VendorID, node.ProductID))
+	}
+
+	driverText := "None"
+	if node.Driver != "" {
+		driverText = node.Driver
+	}
+	addDetailRow(group, "Driver", driverText)
+
+	return group
+}
+
+func (g *GtkUI) buildIOMMUGroupSection(node *domain.DeviceNode) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle(fmt.Sprintf("IOMMU Group %d", node.IOMMUGroup))
+
+	// List other devices in same group
+	g.mu.RLock()
+	members := g.iommuGroups[node.IOMMUGroup]
+	g.mu.RUnlock()
+
+	for _, member := range members {
+		if member.ID == node.ID {
+			continue
+		}
+		row := adw.NewActionRow()
+		row.SetTitle(member.DisplayName())
+		if member.Driver != "" {
+			row.SetSubtitle(member.Driver)
+		}
+		icon := gtk.NewImageFromIconName(g.getIconName(member))
+		row.AddPrefix(icon)
+		group.Add(row)
+	}
+
+	if len(members) <= 1 {
+		row := adw.NewActionRow()
+		row.SetTitle("No other devices in this group")
+		row.AddCSSClass("dim-label")
+		group.Add(row)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildGPUInfoGroup(node *domain.DeviceNode) *adw.PreferencesGroup {
+	gpuInfo := node.GPUInfo
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Graphics")
+
+	// Chip vendor (AMD, NVIDIA, Intel)
+	if node.Vendor != "" {
+		addDetailRow(group, "Vendor", node.Vendor)
+	}
+
+	// Board manufacturer (ASRock, MSI, Sapphire, etc.)
+	if gpuInfo.SubsystemVendor != "" {
+		mfr := lookupSubsystemVendor(gpuInfo.SubsystemVendor)
+		if mfr != "" && mfr != node.Vendor {
+			addDetailRow(group, "Manufacturer", mfr)
+		}
+	}
+
+	if gpuInfo.DriverName != "" {
+		driverStr := gpuInfo.DriverName
+		if gpuInfo.DriverVersion != "" {
+			driverStr = fmt.Sprintf("%s %s", gpuInfo.DriverName, gpuInfo.DriverVersion)
+		}
+		addDetailRow(group, "Graphics Driver", driverStr)
+	}
+
+	if gpuInfo.DriverDesc != "" {
+		addDetailRow(group, "Description", gpuInfo.DriverDesc)
+	}
+
+	if vram := gpuInfo.VRAMTotalString(); vram != "" {
+		vramStr := vram
+		if gpuInfo.VRAMUsed > 0 {
+			usedMB := gpuInfo.VRAMUsed / (1024 * 1024)
+			if usedMB >= 1024 {
+				vramStr = fmt.Sprintf("%s (%.1f GB used)", vram, gpuInfo.VRAMUsedGB())
+			} else {
+				vramStr = fmt.Sprintf("%s (%d MB used)", vram, usedMB)
+			}
+		}
+		addDetailRow(group, "Video Memory", vramStr)
+	}
+
+	if gpuInfo.GPUClockMax > 0 {
+		clockStr := fmt.Sprintf("%d MHz", gpuInfo.GPUClockMax)
+		if gpuInfo.GPUClockMin > 0 {
+			clockStr = fmt.Sprintf("%d – %d MHz", gpuInfo.GPUClockMin, gpuInfo.GPUClockMax)
+		}
+		addDetailRow(group, "GPU Clock", clockStr)
+	}
+
+	if gpuInfo.MemClockMax > 0 {
+		memStr := fmt.Sprintf("%d MHz", gpuInfo.MemClockMax)
+		if gpuInfo.MemClockMin > 0 {
+			memStr = fmt.Sprintf("%d – %d MHz", gpuInfo.MemClockMin, gpuInfo.MemClockMax)
+		}
+		addDetailRow(group, "Memory Clock", memStr)
+	}
+
+	if gpuInfo.VRAMVendor != "" {
+		addDetailRow(group, "VRAM Vendor", gpuInfo.VRAMVendor)
+	}
+
+	if gpuInfo.UniqueID != "" {
+		addDetailRow(group, "GPU Serial", gpuInfo.UniqueID)
+	}
+
+	// PCIe link info
+	if gpuInfo.PCIeLinkSpeed != "" {
+		linkStr := gpuInfo.PCIeLinkSpeed
+		if gpuInfo.PCIeLinkWidth != "" {
+			linkStr = fmt.Sprintf("%s × %s", linkStr, gpuInfo.PCIeLinkWidth)
+		}
+		if gpuInfo.MaxLinkSpeed != "" && gpuInfo.MaxLinkWidth != "" {
+			maxStr := fmt.Sprintf("%s × %s", gpuInfo.MaxLinkSpeed, gpuInfo.MaxLinkWidth)
+			if maxStr != linkStr {
+				linkStr = fmt.Sprintf("%s (max: %s)", linkStr, maxStr)
+			}
+		}
+		addDetailRow(group, "PCIe Link", linkStr)
+	}
+
+	// VBIOS version + save button
+	if gpuInfo.VBIOSVersion != "" {
+		vbiosRow := adw.NewActionRow()
+		vbiosRow.SetTitle("VBIOS")
+		vbiosRow.SetSubtitle(gpuInfo.VBIOSVersion)
+		vbiosRow.SetSubtitleSelectable(true)
+
+		// Add save button if daemon is connected and ROM exists
+		if g.driverMgmtEnabled && node.Type == domain.DeviceTypePCI {
+			pciAddr := strings.TrimPrefix(node.ID, "pci:")
+			romPath := fmt.Sprintf("/sys/bus/pci/devices/%s/rom", pciAddr)
+			if _, err := os.Stat(romPath); err == nil {
+				saveBtn := gtk.NewButton()
+				saveBtn.SetLabel("Save")
+				saveBtn.AddCSSClass("flat")
+				saveBtn.SetVAlign(gtk.AlignCenter)
+				saveBtn.SetTooltipText("Save VBIOS ROM to a file")
+				saveBtn.ConnectClicked(func() { g.saveVBIOS(pciAddr) })
+				vbiosRow.AddSuffix(saveBtn)
+			}
+		}
+
+		group.Add(vbiosRow)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildMonitorsGroup(gpuInfo *domain.GPUInfo) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Display Outputs")
+
+	for _, monitor := range gpuInfo.Monitors {
+		row := adw.NewActionRow()
+		row.SetTitle(monitor.FormattedName())
+
+		var subtitle string
+		if monitor.Status == domain.ConnectionConnected {
+			if monitor.CurrentMode != nil {
+				subtitle = fmt.Sprintf("Connected · %dx%d", monitor.CurrentMode.Width, monitor.CurrentMode.Height)
+				if monitor.CurrentMode.RefreshRate > 0 {
+					subtitle = fmt.Sprintf("%s @ %d Hz", subtitle, monitor.CurrentMode.RefreshRate)
+				}
+			} else {
+				subtitle = "Connected"
+			}
+			if monitor.WidthMM > 0 && monitor.HeightMM > 0 {
+				subtitle = fmt.Sprintf("%s · %d × %d mm", subtitle, monitor.WidthMM, monitor.HeightMM)
+			}
+		} else {
+			subtitle = "Disconnected"
+		}
+		row.SetSubtitle(subtitle)
+
+		icon := gtk.NewImageFromIconName("video-display-symbolic")
+		row.AddPrefix(icon)
+
+		if monitor.Status == domain.ConnectionConnected {
+			// Clickable row to navigate to the display detail page
+			monName := monitor.FormattedName()
+			cardIdx := gpuInfo.CardIndex
+			row.SetActivatable(true)
+			row.ConnectActivated(func() {
+				g.navigateToDisplayByConnector(cardIdx, monName)
+			})
+			chevron := gtk.NewImageFromIconName("go-next-symbolic")
+			chevron.AddCSSClass("dim-label")
+			row.AddSuffix(chevron)
+		}
+
+		group.Add(row)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildStorageInfoGroup(info *domain.StorageInfo) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Storage")
+
+	if info.Model != "" {
+		addDetailRow(group, "Model", info.Model)
+	}
+	if info.Serial != "" {
+		addDetailRow(group, "Serial", info.Serial)
+	}
+	if info.Firmware != "" {
+		addDetailRow(group, "Firmware", info.Firmware)
+	}
+	if info.SizeBytes > 0 {
+		addDetailRow(group, "Capacity", info.SizeString())
+	}
+	// Temperature is shown in the Sensors section (sensor interface), not here.
+	if info.Transport != "" {
+		addDetailRow(group, "Interface", strings.ToUpper(info.Transport))
+	}
+	if info.State != "" {
+		addDetailRow(group, "State", info.State)
+	}
+	if info.BlockDevice != "" {
+		addDetailRow(group, "Block Device", "/dev/"+info.BlockDevice)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildSMARTGroup(smart *domain.SMARTData) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Drive Health (SMART)")
+
+	if smart.Status != "" {
+		row := adw.NewActionRow()
+		row.SetTitle("Health Status")
+		row.SetSubtitle(smart.Status)
+		if smart.Healthy {
+			icon := gtk.NewImageFromIconName("emblem-ok-symbolic")
+			icon.AddCSSClass("success")
+			row.AddSuffix(icon)
+		} else {
+			icon := gtk.NewImageFromIconName("dialog-warning-symbolic")
+			icon.AddCSSClass("warning")
+			row.AddSuffix(icon)
+		}
+		group.Add(row)
+	}
+
+	if smart.PercentageUsed > 0 {
+		addDetailRow(group, "Life Used", fmt.Sprintf("%d%%", smart.PercentageUsed))
+	}
+	if smart.AvailableSpare > 0 {
+		addDetailRow(group, "Available Spare", fmt.Sprintf("%d%%", smart.AvailableSpare))
+	}
+	if smart.PowerOnHours > 0 {
+		addDetailRow(group, "Power-On Hours", fmt.Sprintf("%d", smart.PowerOnHours))
+	}
+	if smart.PowerCycles > 0 {
+		addDetailRow(group, "Power Cycles", fmt.Sprintf("%d", smart.PowerCycles))
+	}
+	if smart.UnsafeShutdowns > 0 {
+		addDetailRow(group, "Unsafe Shutdowns", fmt.Sprintf("%d", smart.UnsafeShutdowns))
+	}
+	if smart.MediaErrors > 0 {
+		addDetailRow(group, "Media Errors", fmt.Sprintf("%d", smart.MediaErrors))
+	}
+	if smart.DataReadBytes > 0 {
+		addDetailRow(group, "Total Read", smart.DataReadString())
+	}
+	if smart.DataWrittenBytes > 0 {
+		addDetailRow(group, "Total Written", smart.DataWrittenString())
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildBatteryGroup(battery *domain.BatteryInfo) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+	group.SetTitle("Battery")
+
+	if battery.Capacity >= 0 {
+		row := adw.NewActionRow()
+		row.SetTitle("Charge")
+		row.SetSubtitle(fmt.Sprintf("%d%%", battery.Capacity))
+
+		var iconName string
+		switch {
+		case battery.Capacity >= 80:
+			iconName = "battery-level-80-symbolic"
+		case battery.Capacity >= 50:
+			iconName = "battery-level-50-symbolic"
+		case battery.Capacity >= 20:
+			iconName = "battery-level-20-symbolic"
+		default:
+			iconName = "battery-level-0-symbolic"
+		}
+		if battery.Status == "Charging" {
+			iconName = "battery-level-80-charging-symbolic"
+		}
+		icon := gtk.NewImageFromIconName(iconName)
+		row.AddPrefix(icon)
+		group.Add(row)
+	} else if battery.CapacityLevel != "" {
+		addDetailRow(group, "Charge Level", battery.CapacityLevel)
+	}
+
+	if battery.Status != "" && battery.Status != "Connected" {
+		addDetailRow(group, "Status", battery.Status)
+	}
+
+	return group
+}
+
+func (g *GtkUI) buildTechnicalDetailsGroup(node *domain.DeviceNode) *adw.PreferencesGroup {
+	group := adw.NewPreferencesGroup()
+
+	expander := adw.NewExpanderRow()
+	expander.SetTitle("Technical Details")
+	expander.SetSubtitle("Internal identifiers and capabilities")
+
+	addExpanderRow(expander, "Internal ID", node.ID)
+	addExpanderRow(expander, "Sysfs Path", node.Path)
+
+	typeName := typeDisplayNames[node.Type]
+	if typeName == "" {
+		typeName = string(node.Type)
+	}
+	addExpanderRow(expander, "Bus Type", typeName)
+
+	className := classDisplayNames[node.Class]
+	if className == "" {
+		className = string(node.Class)
+	}
+	addExpanderRow(expander, "Device Class", className)
+
+	if node.ClassCode != "" {
+		addExpanderRow(expander, "Class Code", "0x"+node.ClassCode)
+	}
+
+	if len(node.Capabilities) > 0 {
+		var humanCaps []string
+		for _, cap := range node.Capabilities {
+			if label, ok := capabilityLabels[cap]; ok {
+				humanCaps = append(humanCaps, label)
+			} else {
+				humanCaps = append(humanCaps, cap)
+			}
+		}
+		addExpanderRow(expander, "Capabilities", strings.Join(humanCaps, ", "))
+	}
+
+	if node.GPUInfo != nil && node.GPUInfo.CardPath != "" {
+		addExpanderRow(expander, "DRM Device", node.GPUInfo.CardPath)
+	}
+
+	if node.GPUInfo != nil && node.GPUInfo.SubsystemVendor != "" {
+		addExpanderRow(expander, "Subsystem",
+			fmt.Sprintf("%s:%s", node.GPUInfo.SubsystemVendor, node.GPUInfo.SubsystemDevice))
+	}
+
+	group.Add(expander)
+	return group
+}
+
+func (g *GtkUI) buildResourcesGroup(res *domain.DeviceResources) *adw.PreferencesGroup {
+	// Check if there's anything to show
+	hasContent := res.IRQ >= 0 || len(res.Memory) > 0 || len(res.IOPorts) > 0
+	if !hasContent {
+		return nil
+	}
+
+	group := adw.NewPreferencesGroup()
+
+	expander := adw.NewExpanderRow()
+	expander.SetTitle("Hardware Resources")
+	expander.SetSubtitle("IRQ, memory, and I/O assignments")
+
+	if res.IRQ >= 0 {
+		irqStr := fmt.Sprintf("%d", res.IRQ)
+		if len(res.IRQs) > 1 {
+			irqStr = fmt.Sprintf("%d (MSI: %d IRQs)", res.IRQ, len(res.IRQs))
+		}
+		addExpanderRow(expander, "IRQ", irqStr)
+	}
+
+	if res.NUMANode >= 0 {
+		addExpanderRow(expander, "NUMA Node", fmt.Sprintf("%d", res.NUMANode))
+	}
+
+	if res.LocalCPUs != "" {
+		addExpanderRow(expander, "CPU Affinity", res.LocalCPUs)
+	}
+
+	for i, mem := range res.Memory {
+		label := fmt.Sprintf("Memory BAR%d", mem.Index)
+		value := fmt.Sprintf("%s [%s]", mem.FormattedRange(), mem.FormattedSize())
+		if mem.Prefetchable {
+			value += " (prefetchable)"
+		}
+		addExpanderRow(expander, label, value)
+		if i >= 5 {
+			addExpanderRow(expander, "…", fmt.Sprintf("%d more regions", len(res.Memory)-i-1))
+			break
+		}
+	}
+
+	for i, io := range res.IOPorts {
+		label := fmt.Sprintf("I/O BAR%d", io.Index)
+		value := io.FormattedRange()
+		if io.Size > 0 {
+			value = fmt.Sprintf("%s [%s]", value, io.FormattedSize())
+		}
+		addExpanderRow(expander, label, value)
+		if i >= 3 {
+			addExpanderRow(expander, "…", fmt.Sprintf("%d more regions", len(res.IOPorts)-i-1))
+			break
+		}
+	}
+
+	group.Add(expander)
+	return group
+}
+
+func addDetailRow(group *adw.PreferencesGroup, label, value string) {
+	if value == "" {
+		return
+	}
+	row := adw.NewActionRow()
+	row.SetTitle(label)
+	row.SetSubtitle(value)
+	row.SetSubtitleSelectable(true)
+	group.Add(row)
+}
+
+func addExpanderRow(expander *adw.ExpanderRow, label, value string) {
+	row := adw.NewActionRow()
+	row.SetTitle(label)
+	row.SetSubtitle(value)
+	row.SetSubtitleSelectable(true)
+	expander.AddRow(row)
+}

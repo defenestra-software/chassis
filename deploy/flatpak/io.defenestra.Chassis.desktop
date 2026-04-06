@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Chassis
+Comment=Device Manager for Linux
+Exec=startup.sh
+Icon=io.defenestra.Chassis
+Terminal=false
+Type=Application
+Categories=System;HardwareSettings;
+Keywords=device;hardware;pci;usb;driver;iommu;
+StartupNotify=true
+StartupWMClass=chassis

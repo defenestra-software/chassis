@@ -1,0 +1,165 @@
+version: '3'
+
+vars:
+  APP_ID: io.defenestra.Chassis
+  DIST_DIR: dist
+  DEPLOY_DIR: deploy
+  VERSION:
+    sh: git describe --tags --abbrev=0 2>/dev/null || echo "dev"
+  VERSION_LDFLAGS: -X defenestra.io/chassis/internal/shared.Version={{.VERSION}}
+  GUI_BINARY: '{{.DIST_DIR}}/chassis'
+  DAEMON_BINARY: '{{.DIST_DIR}}/chassis-daemon'
+
+tasks:
+  default:
+    cmds:
+      - task: build
+
+  build:
+    desc: Build all binaries
+    cmds:
+      - task: build:gui
+      - task: build:daemon
+
+  build:gui:
+    desc: Build the GTK4/Adwaita GUI client
+    cmds:
+      - mkdir -p {{.DIST_DIR}}
+      - go build -ldflags "-s -w {{.VERSION_LDFLAGS}}" -o {{.GUI_BINARY}} ./cmd/chassis
+    sources:
+      - cmd/chassis/**/*.go
+      - internal/**/*.go
+    generates:
+      - '{{.GUI_BINARY}}'
+
+  build:daemon:
+    desc: Build the privileged daemon
+    cmds:
+      - mkdir -p {{.DIST_DIR}}
+      - go build -ldflags "-s -w {{.VERSION_LDFLAGS}}" -o {{.DAEMON_BINARY}} ./cmd/chassis-daemon
+    sources:
+      - cmd/chassis-daemon/**/*.go
+      - internal/**/*.go
+    generates:
+      - '{{.DAEMON_BINARY}}'
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf {{.DIST_DIR}}
+      - rm -rf .flatpak-builder
+      - rm -rf ./{{.DEPLOY_DIR}}/flatpak/.flatpak-builder
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./cmd/... ./internal/...
+
+  test:verbose:
+    desc: Run tests with verbose output
+    cmds:
+      - go test -v ./cmd/... ./internal/...
+
+  test:coverage:
+    desc: Run tests with coverage
+    cmds:
+      - mkdir -p {{.DIST_DIR}}
+      - go test -coverprofile={{.DIST_DIR}}/coverage.out ./cmd/... ./internal/...
+      - go tool cover -html={{.DIST_DIR}}/coverage.out -o {{.DIST_DIR}}/coverage.html
+
+  test:race:
+    desc: Run tests with race detector
+    cmds:
+      - go test -race ./cmd/... ./internal/...
+
+  fmt:
+    desc: Format code
+    cmds:
+      - gofmt -s -w .
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run
+
+  check:
+    desc: Run all quality checks
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: lint
+      - task: test
+
+  deps:
+    desc: Download and tidy dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  flatpak:build:
+    desc: Build Flatpak bundle
+    cmds:
+      - ./{{.DEPLOY_DIR}}/flatpak/build-bundle.sh -v {{.VERSION | default "latest"}}
+
+  flatpak:build:clean:
+    desc: Clean build and rebuild Flatpak bundle
+    cmds:
+      - ./{{.DEPLOY_DIR}}/flatpak/build-bundle.sh -c -v {{.VERSION | default "latest"}}
+
+  flatpak:install:
+    desc: Build and install Flatpak locally
+    cmds:
+      - ./{{.DEPLOY_DIR}}/flatpak/build-bundle.sh -i -v {{.VERSION | default "latest"}}
+
+  flatpak:clean:
+    desc: Remove Flatpak build artifacts
+    cmds:
+      - chmod -R u+w ./{{.DEPLOY_DIR}}/flatpak/.flatpak-builder 2>/dev/null || true
+      - rm -rf ./{{.DIST_DIR}}/flatpak-build ./{{.DIST_DIR}}/flatpak-repo
+      - rm -rf ./{{.DEPLOY_DIR}}/flatpak/.flatpak-builder
+      - chmod -R u+w ./.flatpak-builder 2>/dev/null || true
+      - rm -rf ./.flatpak-builder
+
+  flatpak:run:
+    desc: Run the installed Flatpak
+    cmds:
+      - flatpak run {{.APP_ID}}
+
+  install:dev:
+    desc: Install desktop file and icons for development
+    cmds:
+      - install -Dm644 {{.DEPLOY_DIR}}/flatpak/{{.APP_ID}}.desktop ~/.local/share/applications/{{.APP_ID}}.desktop
+      - install -Dm644 {{.DEPLOY_DIR}}/icons/hicolor/scalable/apps/{{.APP_ID}}.svg ~/.local/share/icons/hicolor/scalable/apps/{{.APP_ID}}.svg
+      - install -Dm644 {{.DEPLOY_DIR}}/icons/hicolor/256x256/apps/{{.APP_ID}}.png ~/.local/share/icons/hicolor/256x256/apps/{{.APP_ID}}.png
+      - install -Dm644 {{.DEPLOY_DIR}}/icons/hicolor/128x128/apps/{{.APP_ID}}.png ~/.local/share/icons/hicolor/128x128/apps/{{.APP_ID}}.png
+      - install -Dm644 {{.DEPLOY_DIR}}/icons/hicolor/64x64/apps/{{.APP_ID}}.png ~/.local/share/icons/hicolor/64x64/apps/{{.APP_ID}}.png
+      - install -Dm644 {{.DEPLOY_DIR}}/icons/hicolor/48x48/apps/{{.APP_ID}}.png ~/.local/share/icons/hicolor/48x48/apps/{{.APP_ID}}.png
+      - gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor/ 2>/dev/null || true
+
+  uninstall:dev:
+    desc: Remove development desktop file and icons
+    cmds:
+      - rm -f ~/.local/share/applications/{{.APP_ID}}.desktop
+      - rm -f ~/.local/share/icons/hicolor/scalable/apps/{{.APP_ID}}.svg
+      - rm -f ~/.local/share/icons/hicolor/256x256/apps/{{.APP_ID}}.png
+      - rm -f ~/.local/share/icons/hicolor/128x128/apps/{{.APP_ID}}.png
+      - rm -f ~/.local/share/icons/hicolor/64x64/apps/{{.APP_ID}}.png
+      - rm -f ~/.local/share/icons/hicolor/48x48/apps/{{.APP_ID}}.png
+      - gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor/ 2>/dev/null || true
+
+  run:
+    desc: Run GUI directly (for development)
+    deps: [build:gui]
+    cmds:
+      - '{{.GUI_BINARY}}'
+
+  run:daemon:
+    desc: Run daemon directly (requires root, for development)
+    deps: [build:daemon]
+    cmds:
+      - sudo {{.DAEMON_BINARY}}
