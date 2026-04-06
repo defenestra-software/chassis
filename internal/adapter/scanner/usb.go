@@ -181,7 +181,9 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 	}
 
 	// Check for vendor-specific debug interfaces (JTAG, SWD, etc.)
-	hasDebug := s.hasVendorDebugInterface(sysfsPath)
+	// Skip for devices already reclassified as lighting controllers
+	// due to some RGB controllers using vendor-specific interfaces (ff)
+	hasDebug := class != domain.DeviceClassLighting && s.hasVendorDebugInterface(sysfsPath)
 
 	id := fmt.Sprintf("usb:%s", name)
 
