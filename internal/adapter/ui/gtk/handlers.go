@@ -3,6 +3,8 @@ package gtk
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"sort"
 	"strings"
 
@@ -279,6 +281,11 @@ func (g *GtkUI) saveVBIOS(pciAddress string) {
 func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	menu := gio.NewMenu()
 
+	// Setup section
+	setupSection := gio.NewMenu()
+	setupSection.Append("Setup Service…", "win.setup")
+	menu.AppendSection("", setupSection)
+
 	// Help section
 	helpSection := gio.NewMenu()
 	helpSection.Append("Keyboard Shortcuts", "win.shortcuts")
@@ -290,6 +297,18 @@ func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	// Register actions
 	g.registerAction("shortcuts", func() {
 		showShortcutsDialog(&g.window.Window)
+	})
+	g.registerAction("setup", func() {
+		go func() {
+			exe, err := os.Executable()
+			if err != nil {
+				return
+			}
+			cmd := exec.Command(exe, "--setup")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			_ = cmd.Run()
+		}()
 	})
 	g.registerAction("about", func() {
 		showAboutDialog(&g.window.Window)

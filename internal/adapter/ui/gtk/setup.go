@@ -7,6 +7,7 @@ import (
 
 	kit "gitlab.com/defenestra-software/go-adw-kit"
 
+	"defenestra.io/chassis/internal/adapter/config"
 	"defenestra.io/chassis/internal/setup"
 )
 
@@ -21,6 +22,9 @@ func RunSetup() int {
 		WelcomeTitle:       "Welcome to Chassis",
 		WelcomeDescription: "An optional system service enables driver management for your devices.",
 		GroupTitle:         "Optional Service",
+		OnSkip: func() {
+			config.SaveSkipSetup(true)
+		},
 		Services: []kit.ServiceRowConfig{
 			{
 				Title:    "System Service",

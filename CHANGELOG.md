@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.1
+
+- Bugfix misclassification of ASUS AURA LED Controller
+- Bugfix misclassification of Cyberpower and other UPS
+- Added battery information using UPower to the power device details page with live monitoring
+- Clamped root device pages to make the appearance more unified
+
 ## v0.1.0
 
 - PCI and USB device scanning with full bus topology

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 
+	"defenestra.io/chassis/internal/adapter/config"
 	"defenestra.io/chassis/internal/adapter/ui/common"
 	gtkui "defenestra.io/chassis/internal/adapter/ui/gtk"
 	"defenestra.io/chassis/internal/setup"
@@ -16,6 +17,8 @@ func main() {
 			os.Exit(gtkui.RunSetup())
 		case "--check":
 			os.Exit(checkDaemon())
+		case "--check-skip-setup":
+			os.Exit(checkSkipSetup())
 		}
 	}
 
@@ -40,6 +43,18 @@ func main() {
 func checkDaemon() int {
 	info := setup.CheckService()
 	if info.Status == setup.ServiceRunning {
+		return 0
+	}
+	return 1
+}
+
+// checkSkipSetup returns 0 if the user has opted to skip setup, 1 otherwise.
+func checkSkipSetup() int {
+	cfg, err := config.Load()
+	if err != nil {
+		return 1
+	}
+	if cfg.SkipSetup {
 		return 0
 	}
 	return 1

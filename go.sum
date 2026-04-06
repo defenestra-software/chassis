@@ -59,6 +59,8 @@ github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 gitlab.com/defenestra-software/go-adw-kit v0.0.3 h1:O6hSv29XjygB1D/hXNAyjWWp3kmnLyj7E8rL2bl1dns=
 gitlab.com/defenestra-software/go-adw-kit v0.0.3/go.mod h1:riJ+s/0nD8RlqVdbp1u/GE3BXnNBtNedx+wOGZ2zb1A=
+gitlab.com/defenestra-software/go-adw-kit v0.0.4 h1:iijxVSBY0eHapQ/+qAh7HmmTNWlLOvEnjYnvICZCui8=
+gitlab.com/defenestra-software/go-adw-kit v0.0.4/go.mod h1:riJ+s/0nD8RlqVdbp1u/GE3BXnNBtNedx+wOGZ2zb1A=
 gitlab.com/defenestra-software/go-flatbridge v0.0.3 h1:hCB80pXHc80whS/TgfiJoGiKgLuTXM8DUV1nR9QZPuY=
 gitlab.com/defenestra-software/go-flatbridge v0.0.3/go.mod h1:sDw4FVpc3p43xOksaWGvEnW6XQEnTSigmZnZzhIagJc=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=

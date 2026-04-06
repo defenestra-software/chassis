@@ -77,6 +77,11 @@ main() {
         exec /app/bin/chassis "$@"
     fi
 
+    # Check if user opted to skip setup
+    if /app/bin/chassis --check-skip-setup; then
+        exec /app/bin/chassis "$@"
+    fi
+
     # Interactive setup - use native GTK4 setup screen
     /app/bin/chassis --setup
     if [ $? -ne 0 ]; then

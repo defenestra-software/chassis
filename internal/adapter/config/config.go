@@ -1,8 +1,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 
 	"github.com/adrg/xdg"
 	"github.com/spf13/viper"
@@ -12,6 +15,7 @@ import (
 type Config struct {
 	Debug      bool   `mapstructure:"debug"`
 	ChrootPath string `mapstructure:"chroot_path"`
+	SkipSetup  bool   `mapstructure:"skip_setup"`
 }
 
 // Load reads config from ~/.config/chassis/config.toml, falling back to defaults.
@@ -23,6 +27,7 @@ func Load() (*Config, error) {
 	// Defaults
 	v.SetDefault("debug", false)
 	v.SetDefault("chroot_path", "")
+	v.SetDefault("skip_setup", false)
 
 	// Env var overrides
 	v.SetEnvPrefix("CHASSIS")
@@ -49,4 +54,38 @@ func Load() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// SaveSkipSetup persists the skip_setup preference to config.toml.
+func SaveSkipSetup(skip bool) {
+	path, err := xdg.ConfigFile("chassis/config.toml")
+	if err != nil {
+		slog.Error("resolving config path", "error", err)
+		return
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		slog.Error("creating config directory", "error", err)
+		return
+	}
+
+	v := viper.New()
+	v.SetConfigFile(path)
+	v.SetConfigType("toml")
+
+	if err := v.ReadInConfig(); err != nil {
+		var notFound viper.ConfigFileNotFoundError
+		if !errors.As(err, &notFound) && !errors.Is(err, os.ErrNotExist) {
+			slog.Error("reading config", "error", err)
+			return
+		}
+	}
+
+	v.Set("skip_setup", skip)
+
+	if err := v.WriteConfig(); err != nil {
+		if err := v.WriteConfigAs(path); err != nil {
+			slog.Error("writing config", "error", err)
+		}
+	}
 }
