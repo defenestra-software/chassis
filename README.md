@@ -2,7 +2,7 @@
 
 A device manager for Linux. See your hardware, manage your drivers.
 
-For more information, visit [defenestra.io](https://defenestra.io/products/chassis).
+For more information, visit [defenestra.io/products/chassis](https://defenestra.io/products/chassis).
 
 ## Building
 
