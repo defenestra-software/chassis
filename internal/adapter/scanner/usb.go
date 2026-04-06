@@ -170,6 +170,11 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 		class = s.reclassifySecurityKey(class, vendorID, product)
 	}
 
+	// Override for UPS devices (report as HID)
+	if class == domain.DeviceClassInput {
+		class = s.reclassifyUPS(class, vendorID, productID)
+	}
+
 	// Override for known non-input HID devices (RGB controllers, etc.)
 	// Check regardless of current class - some RGB controllers report as
 	// HID (Input), others as vendor-specific (Other).
@@ -181,8 +186,7 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 	}
 
 	// Check for vendor-specific debug interfaces (JTAG, SWD, etc.)
-	// Skip for devices already reclassified as lighting controllers
-	// due to some RGB controllers using vendor-specific interfaces (ff)
+	// Skip lighting controllers since RGB devices use vendor-specific interfaces (ff)
 	hasDebug := class != domain.DeviceClassLighting && s.hasVendorDebugInterface(sysfsPath)
 
 	id := fmt.Sprintf("usb:%s", name)
@@ -806,5 +810,175 @@ func (s *GHWScanner) reclassifyPortableDevice(current domain.DeviceClass, vendor
 		}
 	}
 
+	return current
+}
+
+// upsDevices contains known UPS VID:PID pairs from NUT driver tables.
+var upsDevices = map[string]bool{
+	// APC / Schneider Electric
+	"051d:0000": true,
+	"051d:0002": true,
+	"051d:0003": true,
+	"051d:0004": true,
+	"051d:0005": true,
+	// Belkin
+	"050d:0375": true,
+	"050d:0551": true,
+	"050d:0750": true,
+	"050d:0751": true,
+	"050d:0900": true,
+	"050d:0910": true,
+	"050d:0912": true,
+	"050d:0980": true,
+	"050d:0f51": true,
+	"050d:1100": true,
+	// CyberPower
+	"0764:0005": true,
+	"0764:0501": true,
+	"0764:0601": true,
+	// STMicroelectronics (CyberPower/generic UPS chipset)
+	"0483:a430": true,
+	"0483:a113": true,
+	// Delta
+	"05dd:041b": true,
+	"05dd:a011": true,
+	"05dd:a0a0": true,
+	// EcoFlow
+	"3746:ffff": true,
+	// Ever
+	"2e51:ffff": true,
+	"2e51:0000": true,
+	// iDowell
+	"075d:0300": true,
+	// Legrand
+	"1cb0:0032": true,
+	"1cb0:0038": true,
+	// Liebert / Phoenixtec
+	"10af:0000": true,
+	"10af:0001": true,
+	"10af:0002": true,
+	"10af:0004": true,
+	"10af:0008": true,
+	// Phoenixtec
+	"06da:0002": true,
+	"06da:0003": true,
+	"06da:0004": true,
+	"06da:0005": true,
+	"06da:0201": true,
+	"06da:0601": true,
+	"06da:ffff": true,
+	// MGE / Eaton
+	"0463:0001": true,
+	"0463:ffff": true,
+	// Dell (UPS via Eaton OEM)
+	"047c:ffff": true,
+	// Powerware / Eaton
+	"0592:0002": true,
+	"0592:0004": true,
+	// HP / HPE
+	"03f0:0001": true,
+	"03f0:1f01": true,
+	"03f0:1f02": true,
+	"03f0:1f06": true,
+	"03f0:1f08": true,
+	"03f0:1f09": true,
+	"03f0:1f0a": true,
+	"03f0:1fe0": true,
+	"03f0:1fe1": true,
+	"03f0:1fe2": true,
+	"03f0:1fe3": true,
+	"03f0:1fe5": true,
+	"03f0:1fe6": true,
+	"03f0:1fe7": true,
+	"03f0:1fe8": true,
+	// AEG
+	"2b2d:ffff": true,
+	// IBM
+	"04b3:0001": true,
+	// KSTAR
+	"09d6:0001": true,
+	// Microchip / OpenUPS
+	"04d8:d004": true,
+	"04d8:d005": true,
+	// Powercom
+	"0d9f:0001": true,
+	"0d9f:0004": true,
+	"0d9f:00a2": true,
+	"0d9f:00a3": true,
+	"0d9f:00a4": true,
+	"0d9f:00a5": true,
+	"0d9f:00a6": true,
+	// PowerVar
+	"4234:0001": true,
+	"4234:0002": true,
+	// Salicru
+	"2e66:0101": true,
+	"2e66:0201": true,
+	"2e66:0202": true,
+	"2e66:0203": true,
+	"2e66:0300": true,
+	"2e66:0302": true,
+	// Tripp Lite
+	"09ae:0001": true,
+	"09ae:1003": true,
+	"09ae:1007": true,
+	"09ae:1008": true,
+	"09ae:1009": true,
+	"09ae:1010": true,
+	"09ae:1330": true,
+	"09ae:2005": true,
+	"09ae:2007": true,
+	"09ae:2008": true,
+	"09ae:2009": true,
+	"09ae:2010": true,
+	"09ae:2011": true,
+	"09ae:2012": true,
+	"09ae:2013": true,
+	"09ae:2014": true,
+	"09ae:3008": true,
+	"09ae:3009": true,
+	"09ae:3010": true,
+	"09ae:3011": true,
+	"09ae:3012": true,
+	"09ae:3013": true,
+	"09ae:3014": true,
+	"09ae:3015": true,
+	"09ae:3016": true,
+	"09ae:3024": true,
+	"09ae:4001": true,
+	"09ae:4002": true,
+	"09ae:4003": true,
+	"09ae:4004": true,
+	"09ae:4005": true,
+	"09ae:4006": true,
+	"09ae:4007": true,
+	"09ae:4008": true,
+	// Riello / Cypress Semiconductor
+	"04b4:5500": true,
+	// Cypress Semiconductor (generic UPS chipset)
+	"0665:5161": true,
+	// Lakeview Research (generic UPS chipset)
+	"0925:1234": true,
+	// Unitek
+	"0f03:0001": true,
+	// GE
+	"14f0:00c9": true,
+	// Arduino (NUT-compatible UPS controller)
+	"2341:0036": true,
+	"2341:8036": true,
+	"2a03:0036": true,
+	"2a03:8036": true,
+	"2a03:0040": true,
+	"2a03:8040": true,
+	// Sysgration
+	"05b8:0000": true,
+}
+
+// reclassifyUPS moves known UPS devices from Input to Power.
+func (s *GHWScanner) reclassifyUPS(current domain.DeviceClass, vendorID, productID string) domain.DeviceClass {
+	vidpid := vendorID + ":" + productID
+	if upsDevices[vidpid] {
+		return domain.DeviceClassPower
+	}
 	return current
 }
