@@ -15,7 +15,7 @@ func showAboutDialog(parent *gtklib.Window) {
 	about.SetApplicationIcon("io.defenestra.Chassis")
 	about.SetVersion(shared.AppVersion())
 	about.SetDeveloperName("Defenestra, LLC")
-	about.SetCopyright("\u00a9 2025 Defenestra, LLC")
+	about.SetCopyright("\u00a9 2026 Defenestra, LLC")
 	about.SetWebsite("https://defenestra.io/products/chassis/")
 	about.SetIssueURL("https://forum.defenestra.io/")
 	about.SetLicenseType(gtklib.LicenseGPL30)
