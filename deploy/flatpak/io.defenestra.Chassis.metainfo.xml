@@ -32,6 +32,7 @@
       <li>Kernel driver management (bind, unbind, change drivers)</li>
       <li>VBIOS dump for GPU passthrough</li>
       <li>Live hotplug: devices appear and disappear as you plug them in</li>
+      <li>Hardware resource details: IRQ assignments, memory regions, and I/O ports</li>
       <li>Search across all devices</li>
       <li>Adaptive layout for any screen size</li>
     </ul>
@@ -41,6 +42,33 @@
       SMBIOS information.
     </p>
   </description>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Device categories and hardware tree</caption>
+      <image>https://defenestra.io/products/chassis/device-tree.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>GPU driver and display details</caption>
+      <image>https://defenestra.io/products/chassis/gpu-details.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Drive health monitoring</caption>
+      <image>https://defenestra.io/products/chassis/storage-health.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>IOMMU group browser</caption>
+      <image>https://defenestra.io/products/chassis/iommu-groups.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Driver management</caption>
+      <image>https://defenestra.io/products/chassis/driver-management.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Device search and filtering</caption>
+      <image>https://defenestra.io/products/chassis/search.png</image>
+    </screenshot>
+  </screenshots>
 
   <categories>
     <category>System</category>
