@@ -101,7 +101,8 @@ BUNDLE_NAME="chassis-${VERSION}.flatpak"
 BUNDLE_PATH="${OUTPUT_DIR}/${BUNDLE_NAME}"
 
 # Write version file so the Flatpak build can embed it via ldflags.
-echo "$VERSION" > "${PROJECT_ROOT}/.version"
+mkdir -p "${OUTPUT_DIR}"
+echo "$VERSION" > "${OUTPUT_DIR}/.version"
 
 # Check for flatpak-builder
 if ! command -v flatpak-builder &> /dev/null; then
@@ -133,19 +134,20 @@ log "  App ID:  $APP_ID"
 log "  Version: $VERSION"
 log "  Output:  $BUNDLE_PATH"
 
-# Update metainfo XML with the current version and date
-METAINFO="${SCRIPT_DIR}/${APP_ID}.metainfo.xml"
-if [ "$VERSION" != "latest" ] && [ -f "$METAINFO" ]; then
-    TODAY=$(date '+%Y-%m-%d')
-    sed -i "s/<release version=\"[^\"]*\" date=\"[^\"]*\">/<release version=\"${VERSION}\" date=\"${TODAY}\">/" "$METAINFO"
-    log "Updated metainfo version to ${VERSION} (${TODAY})"
+# Copy metainfo to dist/ with the current version and date stamp
+METAINFO_SRC="${SCRIPT_DIR}/${APP_ID}.metainfo.xml"
+METAINFO_OUT="${OUTPUT_DIR}/${APP_ID}.metainfo.xml"
+if [ -f "$METAINFO_SRC" ]; then
+    cp "$METAINFO_SRC" "$METAINFO_OUT"
+    if [ "$VERSION" != "latest" ]; then
+        TODAY=$(date '+%Y-%m-%d')
+        sed -i "s/<release version=\"[^\"]*\" date=\"[^\"]*\">/<release version=\"${VERSION}\" date=\"${TODAY}\">/" "$METAINFO_OUT"
+        log "Updated metainfo version to ${VERSION} (${TODAY})"
+    fi
 fi
 
-# Build the application (cache stays in deploy/flatpak for faster rebuilds)
+# Build the application and export to local repository
 cd "$SCRIPT_DIR"
-flatpak-builder --disable-rofiles-fuse --state-dir="${SCRIPT_DIR}/.flatpak-builder" --force-clean "$BUILD_DIR" "$MANIFEST"
-
-log "Exporting to local repository..."
 flatpak-builder --disable-rofiles-fuse --state-dir="${SCRIPT_DIR}/.flatpak-builder" --repo="$REPO_DIR" --force-clean "$BUILD_DIR" "$MANIFEST"
 
 log "Creating bundle..."

@@ -57,7 +57,7 @@
   </content_rating>
 
   <releases>
-    <release version="v0.0.0" date="2026-04-03">
+    <release version="v0.0.0" date="2026-04-05">
       <description>
         <p>Initial release with comprehensive hardware detection and monitoring.</p>
       </description>

@@ -10,8 +10,8 @@ require (
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/jaypipes/ghw v0.21.2
 	github.com/spf13/viper v1.21.0
-	gitlab.com/defenestra-software/go-adw-kit v0.0.2
-	gitlab.com/defenestra-software/go-flatbridge v0.0.2
+	gitlab.com/defenestra-software/go-adw-kit v0.0.3
+	gitlab.com/defenestra-software/go-flatbridge v0.0.3
 )
 
 require (

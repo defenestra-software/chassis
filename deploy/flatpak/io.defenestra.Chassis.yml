@@ -61,7 +61,7 @@ modules:
     build-commands:
       # Build binaries with version ldflags
       - |
-        VERSION=$(cat .version 2>/dev/null || echo dev)
+        VERSION=$(cat dist/.version 2>/dev/null || echo dev)
         VERSION_LDFLAGS="-X defenestra.io/chassis/internal/shared.Version=${VERSION}"
         echo "Building version: ${VERSION}"
         go build -ldflags "-s -w ${VERSION_LDFLAGS}" -o chassis ./cmd/chassis
@@ -84,7 +84,7 @@ modules:
       - install -Dm644 deploy/icons/hicolor/48x48/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/48x48/apps/io.defenestra.Chassis.png
 
       # Install AppStream metadata
-      - install -Dm644 deploy/flatpak/io.defenestra.Chassis.metainfo.xml /app/share/metainfo/io.defenestra.Chassis.metainfo.xml
+      - install -Dm644 dist/io.defenestra.Chassis.metainfo.xml /app/share/metainfo/io.defenestra.Chassis.metainfo.xml
 
       # Install D-Bus policy
       - install -Dm644 api/io.defenestra.Chassis.conf /app/share/dbus-1/system.d/io.defenestra.Chassis.conf
