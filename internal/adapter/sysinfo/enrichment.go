@@ -449,6 +449,7 @@ func (s *Scanner) EnrichNetworkInfo(root *domain.DeviceNode) {
 		// Check if wireless
 		if _, err := os.Stat(filepath.Join(netPath, "wireless")); err == nil {
 			info.IsWireless = true
+			s.enrichWirelessNM(nic.Name, info)
 		}
 
 		// Try to match to a PCI device
@@ -627,6 +628,119 @@ func (s *Scanner) enrichBlueZDirect(hciName string, info *domain.NetworkInfo) {
 				info.State = "down"
 			}
 		}
+	}
+}
+
+// enrichWirelessNM queries NetworkManager D-Bus for wireless details of the given interface.
+func (s *Scanner) enrichWirelessNM(ifaceName string, info *domain.NetworkInfo) {
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return
+	}
+
+	nm := conn.Object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+	var devPath dbus.ObjectPath
+	err = nm.Call("org.freedesktop.NetworkManager.GetDeviceByIpIface", 0, ifaceName).Store(&devPath)
+	if err != nil {
+		s.logger.Debug("NM: could not find device", "iface", ifaceName, "error", err)
+		return
+	}
+
+	dev := conn.Object("org.freedesktop.NetworkManager", devPath)
+
+	apVar, err := dev.GetProperty("org.freedesktop.NetworkManager.Device.Wireless.ActiveAccessPoint")
+	if err != nil {
+		return
+	}
+	apPath, ok := apVar.Value().(dbus.ObjectPath)
+	if !ok || !apPath.IsValid() || apPath == "/" {
+		return
+	}
+
+	ap := conn.Object("org.freedesktop.NetworkManager", apPath)
+
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.Ssid"); err == nil {
+		if ssidBytes, ok := v.Value().([]byte); ok {
+			info.SSID = string(ssidBytes)
+		}
+	}
+
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.Strength"); err == nil {
+		if strength, ok := v.Value().(byte); ok {
+			info.Signal = int(strength)
+		}
+	}
+
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.Frequency"); err == nil {
+		if freq, ok := v.Value().(uint32); ok {
+			info.Frequency = freq
+			info.Channel = domain.FrequencyToChannel(freq)
+		}
+	}
+
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.MaxBitrate"); err == nil {
+		if rate, ok := v.Value().(uint32); ok {
+			info.BitRate = int(rate)
+		}
+	}
+
+	info.SecurityType = s.nmSecurityType(ap)
+}
+
+func (s *Scanner) nmSecurityType(ap dbus.BusObject) string {
+	const (
+		nmAPSecPairWEP40           = 0x1
+		nmAPSecPairWEP104          = 0x2
+		nmAPSecPairTKIP            = 0x4
+		nmAPSecPairCCMP            = 0x8
+		nmAPSecGroupWEP40          = 0x10
+		nmAPSecGroupWEP104         = 0x20
+		nmAPSecGroupTKIP           = 0x40
+		nmAPSecGroupCCMP           = 0x80
+		nmAPSecKeyMgmtPSK          = 0x100
+		nmAPSecKeyMgmt8021X        = 0x200
+		nmAPSecKeyMgmtSAE          = 0x400
+		nmAPSecKeyMgmtOWE          = 0x800
+		nmAPSecKeyMgmtOWETM        = 0x1000
+		nmAPSecKeyMgmtEAPSuiteB192 = 0x2000
+	)
+
+	var rsnFlags, wpaFlags uint32
+
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.RsnFlags"); err == nil {
+		if f, ok := v.Value().(uint32); ok {
+			rsnFlags = f
+		}
+	}
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.WpaFlags"); err == nil {
+		if f, ok := v.Value().(uint32); ok {
+			wpaFlags = f
+		}
+	}
+
+	switch {
+	case rsnFlags&nmAPSecKeyMgmtSAE != 0:
+		return "WPA3"
+	case rsnFlags&nmAPSecKeyMgmtEAPSuiteB192 != 0:
+		return "WPA3 Enterprise"
+	case rsnFlags&nmAPSecKeyMgmt8021X != 0:
+		return "WPA2 Enterprise"
+	case rsnFlags&nmAPSecKeyMgmtPSK != 0:
+		return "WPA2"
+	case wpaFlags&nmAPSecKeyMgmt8021X != 0:
+		return "WPA Enterprise"
+	case wpaFlags&nmAPSecKeyMgmtPSK != 0:
+		return "WPA"
+	case rsnFlags&(nmAPSecPairWEP40|nmAPSecPairWEP104) != 0,
+		wpaFlags&(nmAPSecPairWEP40|nmAPSecPairWEP104) != 0:
+		return "WEP"
+	case rsnFlags&nmAPSecKeyMgmtOWE != 0:
+		return "OWE"
+	default:
+		if rsnFlags == 0 && wpaFlags == 0 {
+			return "Open"
+		}
+		return ""
 	}
 }
 

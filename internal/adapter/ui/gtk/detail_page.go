@@ -555,6 +555,36 @@ func (g *GtkUI) buildNetworkInfoGroup(node *domain.DeviceNode) *adw.PreferencesG
 		addDetailRow(group, "Status", stateStr)
 	}
 
+	if net.IsWireless {
+		ssidRow := addLiveRow(group, "Network (SSID)", net.SSID)
+		signalRow := addLiveRow(group, "Signal Strength", net.SignalString())
+		freqRow := addLiveRow(group, "Frequency", net.FrequencyString())
+		bitrateRow := addLiveRow(group, "Bit Rate", net.BitRateString())
+		securityRow := addLiveRow(group, "Security", net.SecurityType)
+
+		var sourceID glib.SourceHandle
+		group.ConnectMap(func() {
+			sourceID = glib.TimeoutSecondsAdd(3, func() bool {
+				w := pollWirelessNM(net.InterfaceName)
+				if w == nil {
+					return true
+				}
+				setLiveRow(ssidRow, w.SSID)
+				setLiveRow(signalRow, w.SignalString())
+				setLiveRow(freqRow, w.FrequencyString())
+				setLiveRow(bitrateRow, w.BitRateString())
+				setLiveRow(securityRow, w.SecurityType)
+				return true
+			})
+		})
+		group.ConnectUnmap(func() {
+			if sourceID > 0 {
+				glib.SourceRemove(sourceID)
+				sourceID = 0
+			}
+		})
+	}
+
 	if net.Speed != "" && net.Speed != "-1" && net.Speed != "unknown" {
 		addDetailRow(group, "Link Speed", net.Speed)
 	}
@@ -684,6 +714,131 @@ func (g *GtkUI) buildSensorReadingsGroupTitle(node *domain.DeviceNode, title str
 	}
 
 	return group
+}
+
+func addLiveRow(group *adw.PreferencesGroup, label, value string) *adw.ActionRow {
+	row := adw.NewActionRow()
+	row.SetTitle(label)
+	row.SetSubtitleSelectable(true)
+	if value != "" {
+		row.SetSubtitle(value)
+		row.SetVisible(true)
+	} else {
+		row.SetVisible(false)
+	}
+	group.Add(row)
+	return row
+}
+
+func setLiveRow(row *adw.ActionRow, value string) {
+	if row == nil {
+		return
+	}
+	if value != "" {
+		row.SetSubtitle(value)
+		row.SetVisible(true)
+	} else {
+		row.SetVisible(false)
+	}
+}
+
+func pollWirelessNM(ifaceName string) *domain.NetworkInfo {
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return nil
+	}
+
+	nm := conn.Object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+	var devPath dbus.ObjectPath
+	if err := nm.Call("org.freedesktop.NetworkManager.GetDeviceByIpIface", 0, ifaceName).Store(&devPath); err != nil {
+		return nil
+	}
+
+	dev := conn.Object("org.freedesktop.NetworkManager", devPath)
+	apVar, err := dev.GetProperty("org.freedesktop.NetworkManager.Device.Wireless.ActiveAccessPoint")
+	if err != nil {
+		return nil
+	}
+	apPath, ok := apVar.Value().(dbus.ObjectPath)
+	if !ok || !apPath.IsValid() || apPath == "/" {
+		return &domain.NetworkInfo{}
+	}
+
+	ap := conn.Object("org.freedesktop.NetworkManager", apPath)
+	info := &domain.NetworkInfo{}
+
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.Ssid"); err == nil {
+		if ssidBytes, ok := v.Value().([]byte); ok {
+			info.SSID = string(ssidBytes)
+		}
+	}
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.Strength"); err == nil {
+		if strength, ok := v.Value().(byte); ok {
+			info.Signal = int(strength)
+		}
+	}
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.Frequency"); err == nil {
+		if freq, ok := v.Value().(uint32); ok {
+			info.Frequency = freq
+			info.Channel = domain.FrequencyToChannel(freq)
+		}
+	}
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.MaxBitrate"); err == nil {
+		if rate, ok := v.Value().(uint32); ok {
+			info.BitRate = int(rate)
+		}
+	}
+
+	var rsnFlags, wpaFlags uint32
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.RsnFlags"); err == nil {
+		if f, ok := v.Value().(uint32); ok {
+			rsnFlags = f
+		}
+	}
+	if v, err := ap.GetProperty("org.freedesktop.NetworkManager.AccessPoint.WpaFlags"); err == nil {
+		if f, ok := v.Value().(uint32); ok {
+			wpaFlags = f
+		}
+	}
+	info.SecurityType = nmSecurityString(rsnFlags, wpaFlags)
+
+	return info
+}
+
+func nmSecurityString(rsnFlags, wpaFlags uint32) string {
+	const (
+		keyMgmtPSK          = 0x100
+		keyMgmt8021X        = 0x200
+		keyMgmtSAE          = 0x400
+		keyMgmtOWE          = 0x800
+		keyMgmtEAPSuiteB192 = 0x2000
+		pairWEP40           = 0x1
+		pairWEP104          = 0x2
+	)
+	switch {
+	case rsnFlags&keyMgmtSAE != 0:
+		return "WPA3"
+	case rsnFlags&keyMgmtEAPSuiteB192 != 0:
+		return "WPA3 Enterprise"
+	case rsnFlags&keyMgmt8021X != 0:
+		return "WPA2 Enterprise"
+	case rsnFlags&keyMgmtPSK != 0:
+		return "WPA2"
+	case wpaFlags&keyMgmt8021X != 0:
+		return "WPA Enterprise"
+	case wpaFlags&keyMgmtPSK != 0:
+		return "WPA"
+	case rsnFlags&(pairWEP40|pairWEP104) != 0,
+		wpaFlags&(pairWEP40|pairWEP104) != 0:
+		return "WEP"
+	case rsnFlags&keyMgmtOWE != 0:
+		return "OWE"
+	default:
+		if rsnFlags == 0 && wpaFlags == 0 {
+			return "Open"
+		}
+		return ""
+	}
 }
 
 // readSysfsForUI reads a hwmon value and returns it as a float-compatible string.
