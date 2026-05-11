@@ -135,7 +135,7 @@ log "  Version: $VERSION"
 log "  Output:  $BUNDLE_PATH"
 
 # Copy metainfo to dist/ with the current version and date stamp
-METAINFO_SRC="${SCRIPT_DIR}/${APP_ID}.metainfo.xml"
+METAINFO_SRC="${SCRIPT_DIR}/../share/metainfo/${APP_ID}.metainfo.xml"
 METAINFO_OUT="${OUTPUT_DIR}/${APP_ID}.metainfo.xml"
 if [ -f "$METAINFO_SRC" ]; then
     cp "$METAINFO_SRC" "$METAINFO_OUT"

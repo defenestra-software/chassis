@@ -77,11 +77,11 @@ modules:
 
       # Install desktop file and icons
       - install -Dm644 deploy/flatpak/io.defenestra.Chassis.desktop /app/share/applications/io.defenestra.Chassis.desktop
-      - install -Dm644 deploy/icons/hicolor/scalable/apps/io.defenestra.Chassis.svg /app/share/icons/hicolor/scalable/apps/io.defenestra.Chassis.svg
-      - install -Dm644 deploy/icons/hicolor/256x256/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/256x256/apps/io.defenestra.Chassis.png
-      - install -Dm644 deploy/icons/hicolor/128x128/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/128x128/apps/io.defenestra.Chassis.png
-      - install -Dm644 deploy/icons/hicolor/64x64/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/64x64/apps/io.defenestra.Chassis.png
-      - install -Dm644 deploy/icons/hicolor/48x48/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/48x48/apps/io.defenestra.Chassis.png
+      - install -Dm644 deploy/share/icons/hicolor/scalable/apps/io.defenestra.Chassis.svg /app/share/icons/hicolor/scalable/apps/io.defenestra.Chassis.svg
+      - install -Dm644 deploy/share/icons/hicolor/256x256/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/256x256/apps/io.defenestra.Chassis.png
+      - install -Dm644 deploy/share/icons/hicolor/128x128/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/128x128/apps/io.defenestra.Chassis.png
+      - install -Dm644 deploy/share/icons/hicolor/64x64/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/64x64/apps/io.defenestra.Chassis.png
+      - install -Dm644 deploy/share/icons/hicolor/48x48/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/48x48/apps/io.defenestra.Chassis.png
 
       # Install AppStream metadata
       - install -Dm644 dist/io.defenestra.Chassis.metainfo.xml /app/share/metainfo/io.defenestra.Chassis.metainfo.xml
