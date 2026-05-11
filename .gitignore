@@ -9,6 +9,7 @@ dist/
 *.dylib
 *.test
 *.out
+vendor
 
 # IDE
 .idea/

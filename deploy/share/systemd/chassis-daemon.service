@@ -1,0 +1,20 @@
+[Unit]
+Description=Chassis Device Manager Daemon
+Documentation=https://gitlab.com/defenestra-software/chassis
+After=dbus.service
+Requires=dbus.service
+
+[Service]
+Type=dbus
+BusName=io.defenestra.Chassis
+ExecStart=/usr/libexec/chassis-daemon
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=false
+ProtectSystem=false
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+Alias=dbus-io.defenestra.Chassis.service

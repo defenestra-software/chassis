@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=io.defenestra.Chassis
+Exec=/usr/libexec/chassis-daemon
+User=root
+SystemdService=chassis-daemon.service

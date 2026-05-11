@@ -130,6 +130,18 @@ tasks:
     cmds:
       - flatpak run {{.APP_ID}}
 
+  rpm:srpm:
+    desc: Build SRPM (for COPR upload). Outputs to {{.DIST_DIR}}/
+    cmds:
+      - mkdir -p {{.DIST_DIR}}
+      - cd {{.DIST_DIR}} && ../{{.DEPLOY_DIR}}/rpm/make_srpm.sh
+
+  rpm:build:
+    desc: Build RPM locally for testing
+    deps: [rpm:srpm]
+    cmds:
+      - rpmbuild --rebuild {{.DIST_DIR}}/defenestra-chassis-*.src.rpm
+
   install:dev:
     desc: Install desktop file and icons for development
     cmds:
