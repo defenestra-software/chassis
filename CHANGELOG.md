@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.3
+- Added VirtIO device classification
+- Updated to go-flatbridge v0.0.4 to fix flatbox false positive detection
+- Hid service setup button on RPM installations
+
 ## v0.1.2
 - Added ASRock AMD Radeon RX 9070 XT Steel Legend 16GB for GPU classification
 - Added ASRock LED Controller (Polychrome RGB)

@@ -188,6 +188,12 @@ func (s *GHWScanner) pciDeviceToNode(dev *ghw.PCIDevice) *domain.DeviceNode {
 	// Classify device
 	class := s.classifyPCIDevice(classCode)
 
+	if strings.EqualFold(vendorID, "1af4") {
+		if virtioClass, ok := classifyVirtioDevice(productID); ok {
+			class = virtioClass
+		}
+	}
+
 	// Override for security processors that don't use class 10
 	// (AMD PSP/CCP often uses class 10 which is already handled,
 	// but some variants use class 13 or other codes)
@@ -227,6 +233,34 @@ func (s *GHWScanner) pciDeviceToNode(dev *ghw.PCIDevice) *domain.DeviceNode {
 func isUnknownName(name string) bool {
 	n := strings.ToLower(strings.TrimSpace(name))
 	return n == "" || n == "unknown"
+}
+
+var virtioDeviceClasses = map[string]domain.DeviceClass{
+	// Legacy
+	"1000": domain.DeviceClassNetwork,  // virtio-net
+	"1001": domain.DeviceClassStorage,  // virtio-blk
+	"1002": domain.DeviceClassMemory,   // virtio-balloon
+	"1003": domain.DeviceClassSerial,   // virtio-console
+	"1004": domain.DeviceClassStorage,  // virtio-scsi
+	"1005": domain.DeviceClassSecurity, // virtio-rng
+	"1009": domain.DeviceClassStorage,  // virtio-9p
+	// Modern
+	"1041": domain.DeviceClassNetwork,  // virtio-net
+	"1042": domain.DeviceClassStorage,  // virtio-blk
+	"1043": domain.DeviceClassSerial,   // virtio-console
+	"1044": domain.DeviceClassSecurity, // virtio-rng
+	"1045": domain.DeviceClassMemory,   // virtio-balloon
+	"1048": domain.DeviceClassStorage,  // virtio-scsi
+	"1049": domain.DeviceClassStorage,  // virtio-9p
+	"1050": domain.DeviceClassGPU,      // virtio-gpu
+	"1052": domain.DeviceClassInput,    // virtio-input
+	"1053": domain.DeviceClassNetwork,  // virtio-vsock
+	"105a": domain.DeviceClassStorage,  // virtio-fs
+}
+
+func classifyVirtioDevice(deviceID string) (domain.DeviceClass, bool) {
+	class, ok := virtioDeviceClasses[strings.ToLower(deviceID)]
+	return class, ok
 }
 
 func (s *GHWScanner) classifyPCIDevice(classCode string) domain.DeviceClass {
