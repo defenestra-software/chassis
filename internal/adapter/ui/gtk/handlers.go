@@ -15,6 +15,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	glib2 "github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
+	flatpak "gitlab.com/defenestra-software/go-flatbridge"
 )
 
 func (g *GtkUI) buildActionButtons(node *domain.DeviceNode) gtk.Widgetter {
@@ -282,9 +283,11 @@ func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	menu := gio.NewMenu()
 
 	// Setup section
-	setupSection := gio.NewMenu()
-	setupSection.Append("Setup Service…", "win.setup")
-	menu.AppendSection("", setupSection)
+	if flatpak.InFlatpakEnvironment() {
+		setupSection := gio.NewMenu()
+		setupSection.Append("Setup Service…", "win.setup")
+		menu.AppendSection("", setupSection)
+	}
 
 	// Help section
 	helpSection := gio.NewMenu()
