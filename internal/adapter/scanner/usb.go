@@ -725,6 +725,9 @@ var rgbControllerDevices = map[string]bool{
 	"1e71:2021": true, // NZXT RGB Controller
 	"1e71:2022": true, // NZXT RGB Fan Controller
 
+	// ASRock Polychrome - motherboard RGB controllers
+	"26ce:01a2": true, // ASRock LED Controller (Polychrome USB)
+
 	// Razer - standalone Chroma controllers (not peripherals)
 	"1532:0f07": true, // Razer Chroma Mug Holder
 	"1532:0f08": true, // Razer Base Station Chroma
