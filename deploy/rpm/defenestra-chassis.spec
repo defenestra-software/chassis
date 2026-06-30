@@ -50,6 +50,8 @@ install -Dm755 chassis-daemon %{buildroot}%{_libexecdir}/chassis-daemon
 
 install -Dm644 api/io.defenestra.Chassis.conf \
     %{buildroot}%{_datadir}/dbus-1/system.d/io.defenestra.Chassis.conf
+install -Dm644 api/io.defenestra.Chassis.policy \
+    %{buildroot}%{_datadir}/polkit-1/actions/io.defenestra.Chassis.policy
 install -Dm644 deploy/share/dbus/io.defenestra.Chassis.service \
     %{buildroot}%{_datadir}/dbus-1/system-services/io.defenestra.Chassis.service
 install -Dm644 deploy/share/systemd/chassis-daemon.service \
@@ -92,6 +94,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{_bindir}/chassis
 %{_libexecdir}/chassis-daemon
 %{_datadir}/dbus-1/system.d/io.defenestra.Chassis.conf
+%{_datadir}/polkit-1/actions/io.defenestra.Chassis.policy
 %{_datadir}/dbus-1/system-services/io.defenestra.Chassis.service
 %{_unitdir}/chassis-daemon.service
 %{_datadir}/applications/io.defenestra.Chassis.desktop

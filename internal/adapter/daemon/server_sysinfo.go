@@ -136,8 +136,12 @@ func parseDMIMemory(output string) string {
 	return result
 }
 
-func (s *Server) DumpVBIOS(pciAddress string) ([]byte, *dbus.Error) {
+func (s *Server) DumpVBIOS(sender dbus.Sender, pciAddress string) ([]byte, *dbus.Error) {
 	s.logger.Info("VBIOS dump requested", "device", pciAddress)
+
+	if dberr := s.authorize(sender, actionDumpVBIOS); dberr != nil {
+		return nil, dberr
+	}
 
 	if !pciAddressRegex.MatchString(pciAddress) {
 		return nil, dbus.MakeFailedError(domain.ErrInvalidPath)

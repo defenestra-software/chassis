@@ -11,8 +11,12 @@ import (
 	"defenestra.io/chassis/internal/core/domain"
 )
 
-func (s *Server) Unbind(deviceID, busType string) *dbus.Error {
+func (s *Server) Unbind(sender dbus.Sender, deviceID, busType string) *dbus.Error {
 	s.logger.Info("unbind requested", "device", deviceID, "bus", busType)
+
+	if dberr := s.authorize(sender, actionManageDrivers); dberr != nil {
+		return dberr
+	}
 
 	if err := s.validateDeviceID(deviceID); err != nil {
 		return dbus.MakeFailedError(err)
@@ -45,8 +49,12 @@ func (s *Server) Unbind(deviceID, busType string) *dbus.Error {
 	return nil
 }
 
-func (s *Server) Bind(deviceID, driverName string) *dbus.Error {
+func (s *Server) Bind(sender dbus.Sender, deviceID, driverName string) *dbus.Error {
 	s.logger.Info("bind requested", "device", deviceID, "driver", driverName)
+
+	if dberr := s.authorize(sender, actionManageDrivers); dberr != nil {
+		return dberr
+	}
 
 	if err := s.validateDeviceID(deviceID); err != nil {
 		return dbus.MakeFailedError(err)
@@ -83,8 +91,12 @@ func (s *Server) Bind(deviceID, driverName string) *dbus.Error {
 	return nil
 }
 
-func (s *Server) DriverProbe(deviceID string) *dbus.Error {
+func (s *Server) DriverProbe(sender dbus.Sender, deviceID string) *dbus.Error {
 	s.logger.Info("driver probe requested", "device", deviceID)
+
+	if dberr := s.authorize(sender, actionManageDrivers); dberr != nil {
+		return dberr
+	}
 
 	if err := s.validateDeviceID(deviceID); err != nil {
 		return dbus.MakeFailedError(err)
@@ -114,8 +126,12 @@ func (s *Server) DriverProbe(deviceID string) *dbus.Error {
 	return nil
 }
 
-func (s *Server) LoadModule(moduleName string) *dbus.Error {
+func (s *Server) LoadModule(sender dbus.Sender, moduleName string) *dbus.Error {
 	s.logger.Info("load module requested", "module", moduleName)
+
+	if dberr := s.authorize(sender, actionManageModules); dberr != nil {
+		return dberr
+	}
 
 	if err := s.validateModuleName(moduleName); err != nil {
 		return dbus.MakeFailedError(err)
@@ -130,8 +146,12 @@ func (s *Server) LoadModule(moduleName string) *dbus.Error {
 	return nil
 }
 
-func (s *Server) UnloadModule(moduleName string) *dbus.Error {
+func (s *Server) UnloadModule(sender dbus.Sender, moduleName string) *dbus.Error {
 	s.logger.Info("unload module requested", "module", moduleName)
+
+	if dberr := s.authorize(sender, actionManageModules); dberr != nil {
+		return dberr
+	}
 
 	if err := s.validateModuleName(moduleName); err != nil {
 		return dbus.MakeFailedError(err)
