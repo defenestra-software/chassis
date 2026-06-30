@@ -56,6 +56,7 @@ type GtkUI struct {
 	restoringSelection   bool
 	pendingTree          *domain.DeviceNode
 	onDetailPage         bool
+	progressToast        *adw.Toast
 	mu                   sync.RWMutex
 
 	// Callbacks
@@ -226,14 +227,25 @@ func (g *GtkUI) ShowError(err error) {
 
 func (g *GtkUI) ShowProgress(message string) {
 	glib.IdleAdd(func() {
+		// Timeout 0 = stays until dismissed. HideProgress dismisses it, so a
+		// new progress message must clear the previous one first.
+		if g.progressToast != nil {
+			g.progressToast.Dismiss()
+		}
 		toast := adw.NewToast(message)
 		toast.SetTimeout(0)
 		g.toast.AddToast(toast)
+		g.progressToast = toast
 	})
 }
 
 func (g *GtkUI) HideProgress() {
-	// Toasts auto-dismiss
+	glib.IdleAdd(func() {
+		if g.progressToast != nil {
+			g.progressToast.Dismiss()
+			g.progressToast = nil
+		}
+	})
 }
 
 func (g *GtkUI) RefreshDevice(device *domain.DeviceNode) {

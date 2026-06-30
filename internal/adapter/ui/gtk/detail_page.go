@@ -36,6 +36,9 @@ func (g *GtkUI) showDeviceDetailScrollTo(node *domain.DeviceNode, scrollTo strin
 	toolbarView.SetContent(scroll)
 
 	page := adw.NewNavigationPage(toolbarView, node.DisplayName())
+	// Tag with the device ID so a post-action refresh can tell whether this
+	// exact device is still on screen before re-rendering it.
+	page.SetTag(node.ID)
 	g.navView.Push(page)
 	g.onDetailPage = true
 
