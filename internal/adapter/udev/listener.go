@@ -18,7 +18,6 @@ const (
 )
 
 type NetlinkListener struct {
-	fd        int
 	eventChan chan domain.HardwareEvent
 	stopChan  chan struct{}
 	logger    *slog.Logger
@@ -26,7 +25,6 @@ type NetlinkListener struct {
 
 func NewNetlinkListener(logger *slog.Logger) *NetlinkListener {
 	return &NetlinkListener{
-		fd:        -1,
 		eventChan: make(chan domain.HardwareEvent, 100),
 		stopChan:  make(chan struct{}),
 		logger:    logger,
@@ -41,7 +39,6 @@ func (l *NetlinkListener) Subscribe() (<-chan domain.HardwareEvent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create netlink socket: %w", err)
 	}
-	l.fd = fd
 
 	// Bind to both kernel and udev events.
 	// Group 1 = kernel uevents (requires CAP_NET_ADMIN in some setups)
@@ -56,14 +53,14 @@ func (l *NetlinkListener) Subscribe() (<-chan domain.HardwareEvent, error) {
 		return nil, fmt.Errorf("failed to bind netlink socket: %w", err)
 	}
 
-	// Start reading events
-	go l.readLoop()
+	go l.readLoop(fd)
 
 	l.logger.Info("udev listener started")
 	return l.eventChan, nil
 }
 
-func (l *NetlinkListener) readLoop() {
+func (l *NetlinkListener) readLoop(fd int) {
+	defer syscall.Close(fd)
 	buf := make([]byte, 8192)
 
 	for {
@@ -74,10 +71,10 @@ func (l *NetlinkListener) readLoop() {
 		}
 
 		// Set read timeout so we can check stopChan periodically
-		syscall.SetsockoptTimeval(l.fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO,
+		syscall.SetsockoptTimeval(fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO,
 			&syscall.Timeval{Sec: 1})
 
-		n, _, err := syscall.Recvfrom(l.fd, buf, 0)
+		n, _, err := syscall.Recvfrom(fd, buf, 0)
 		if err != nil {
 			// Timeout is expected, continue
 			if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
@@ -212,13 +209,6 @@ func scanNullTerminated(data []byte, atEOF bool) (advance int, token []byte, err
 
 func (l *NetlinkListener) Stop() error {
 	close(l.stopChan)
-
-	if l.fd >= 0 {
-		syscall.Close(l.fd)
-		l.fd = -1
-	}
-
-	// Don't close eventChan here - let it drain naturally
 	l.logger.Info("udev listener stopped")
 	return nil
 }
