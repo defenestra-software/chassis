@@ -503,10 +503,8 @@ func (g *GtkUI) buildMemoryModuleGroup(mod *domain.MemoryModuleInfo) *adw.Prefer
 	group := adw.NewPreferencesGroup()
 	group.SetTitle("Memory Module")
 
-	if mod.SizeString_ != "" {
-		addDetailRow(group, "Capacity", mod.SizeString_)
-	} else {
-		addDetailRow(group, "Capacity", mod.SizeString())
+	if mod.Size != "" {
+		addDetailRow(group, "Capacity", mod.Size)
 	}
 	addDetailRow(group, "Slot", mod.Label)
 	if mod.Type != "" && mod.Type != "Unknown" {
