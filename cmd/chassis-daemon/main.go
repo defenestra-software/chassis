@@ -4,16 +4,15 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"defenestra.io/chassis/internal/adapter/daemon"
 )
 
 func main() {
-	// Initialize structured logging - daemon uses env var directly
-	// (systemd sets CHASSIS_DEBUG in the unit file, no TOML needed)
 	level := slog.LevelInfo
-	if os.Getenv("CHASSIS_DEBUG") != "" {
+	if debug, _ := strconv.ParseBool(os.Getenv("CHASSIS_DEBUG")); debug {
 		level = slog.LevelDebug
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
