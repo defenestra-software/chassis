@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+  <vendor>Defenestra</vendor>
+  <vendor_url>https://defenestra.io</vendor_url>
+
+  <action id="io.defenestra.Chassis.manage-drivers">
+    <description>Bind or unbind a device driver</description>
+    <message>Authentication is required to change device driver bindings</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="io.defenestra.Chassis.manage-modules">
+    <description>Load or unload a kernel module</description>
+    <message>Authentication is required to load or unload a kernel module</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+  </action>
+
+  <action id="io.defenestra.Chassis.dump-vbios">
+    <description>Dump the video BIOS of a graphics device</description>
+    <message>Authentication is required to dump the video BIOS</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+</policyconfig>

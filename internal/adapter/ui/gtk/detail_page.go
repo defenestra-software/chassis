@@ -36,6 +36,9 @@ func (g *GtkUI) showDeviceDetailScrollTo(node *domain.DeviceNode, scrollTo strin
 	toolbarView.SetContent(scroll)
 
 	page := adw.NewNavigationPage(toolbarView, node.DisplayName())
+	// Tag with the device ID so a post-action refresh can tell whether this
+	// exact device is still on screen before re-rendering it.
+	page.SetTag(node.ID)
 	g.navView.Push(page)
 	g.onDetailPage = true
 
@@ -500,10 +503,8 @@ func (g *GtkUI) buildMemoryModuleGroup(mod *domain.MemoryModuleInfo) *adw.Prefer
 	group := adw.NewPreferencesGroup()
 	group.SetTitle("Memory Module")
 
-	if mod.SizeString_ != "" {
-		addDetailRow(group, "Capacity", mod.SizeString_)
-	} else {
-		addDetailRow(group, "Capacity", mod.SizeString())
+	if mod.Size != "" {
+		addDetailRow(group, "Capacity", mod.Size)
 	}
 	addDetailRow(group, "Slot", mod.Label)
 	if mod.Type != "" && mod.Type != "Unknown" {

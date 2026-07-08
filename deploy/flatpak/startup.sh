@@ -45,6 +45,7 @@ uninstall_service() {
         systemctl disable ${SERVICE_NAME} 2>/dev/null || true
         rm -f ${UNIT_PATH}
         rm -f /etc/dbus-1/system.d/${DBUS_NAME}.conf
+        rm -f /etc/polkit-1/actions/${DBUS_NAME}.policy
         systemctl daemon-reload
         systemctl reload dbus 2>/dev/null || true
     "

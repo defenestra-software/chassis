@@ -104,6 +104,7 @@ func installFlatpakService() (string, error) {
 	user := GetCurrentUser()
 	daemonSh := appPath + "/bin/daemon.sh"
 	dbusConf := appPath + "/share/dbus-1/system.d/" + dbusName + ".conf"
+	polkitPolicy := appPath + "/share/polkit-1/actions/" + dbusName + ".policy"
 
 	unitContent := fmt.Sprintf(`[Unit]
 Description=Chassis Device Manager Daemon (via Flatpak)
@@ -114,7 +115,7 @@ Requires=dbus.service
 Type=dbus
 BusName=%s
 Environment=FLATPAK_INSTALL_USER=%s
-ExecStartPre=/bin/sh -c '[ -d /var/lib/flatpak/app/%s ] || [ -d /home/%s/.local/share/flatpak/app/%s ] || { systemd-run --no-block sh -c '"'"'sleep 2; systemctl disable %s; rm -f %s /etc/dbus-1/system.d/%s.conf; systemctl daemon-reload; systemctl reset-failed %s'"'"'; exit 1; }'
+ExecStartPre=/bin/sh -c '[ -d /var/lib/flatpak/app/%s ] || [ -d /home/%s/.local/share/flatpak/app/%s ] || { systemd-run --no-block sh -c '"'"'sleep 2; systemctl disable %s; rm -f %s /etc/dbus-1/system.d/%s.conf /etc/polkit-1/actions/%s.policy; systemctl daemon-reload; systemctl reset-failed %s'"'"'; exit 1; }'
 ExecStart=%s
 Restart=on-failure
 RestartSec=5
@@ -122,16 +123,17 @@ StartLimitIntervalSec=60
 StartLimitBurst=5
 
 [Install]
-WantedBy=multi-user.target`, dbusName, user, appID, user, appID, serviceName, unitPath, dbusName, serviceName, daemonSh)
+WantedBy=multi-user.target`, dbusName, user, appID, user, appID, serviceName, unitPath, dbusName, dbusName, serviceName, daemonSh)
 
 	installScript := fmt.Sprintf(`cat > %s << 'ENDOFUNIT'
 %s
 ENDOFUNIT
 install -Dm644 %s /etc/dbus-1/system.d/%s.conf
+install -Dm644 %s /etc/polkit-1/actions/%s.policy
 chcon -t bin_t %s 2>/dev/null || true
 systemctl reload dbus 2>/dev/null || true
 systemctl daemon-reload
-systemctl enable --now %s`, unitPath, unitContent, dbusConf, dbusName, daemonSh, serviceName)
+systemctl enable --now %s`, unitPath, unitContent, dbusConf, dbusName, polkitPolicy, dbusName, daemonSh, serviceName)
 
 	rootParts := strings.Fields(rootCmd)
 	cmdArgs := append(rootParts, "sh", "-c", installScript)

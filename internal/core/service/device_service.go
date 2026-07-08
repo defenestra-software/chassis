@@ -213,7 +213,7 @@ func (s *DeviceService) enrichSystemInfo(tree *domain.DeviceNode) {
 
 			modInfo := &domain.MemoryModuleInfo{
 				Label:        mod.Label,
-				SizeString_:  mod.Size,
+				Size:         mod.Size,
 				Type:         filterUnknown(mod.Type),
 				Speed:        filterUnknown(mod.Speed),
 				Vendor:       vendor,

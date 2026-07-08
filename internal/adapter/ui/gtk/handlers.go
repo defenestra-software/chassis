@@ -82,13 +82,59 @@ func (g *GtkUI) doAction(deviceID, action string) {
 
 	g.ShowProgress(fmt.Sprintf("Performing %s…", action))
 	go func() {
-		if err := g.onAction(deviceID, action); err != nil {
+		err := g.onAction(deviceID, action)
+		if err != nil {
+			g.HideProgress()
 			g.ShowError(err)
-		} else if g.onRefresh != nil {
+			return
+		}
+		if g.onRefresh != nil {
 			g.onRefresh()
+			g.refreshDetailPage(deviceID)
 		}
 		g.HideProgress()
+		g.showToast(completionMessage(action))
 	}()
+}
+
+// showToast shows a brief, self-dismissing notification.
+func (g *GtkUI) showToast(message string) {
+	glib.IdleAdd(func() {
+		toast := adw.NewToast(message)
+		toast.SetTimeout(2)
+		g.toast.AddToast(toast)
+	})
+}
+
+func completionMessage(action string) string {
+	switch {
+	case action == "disable":
+		return "Device disabled"
+	case action == "enable":
+		return "Device enabled"
+	case strings.HasPrefix(action, "bind:"):
+		return "Driver bound"
+	default:
+		return "Done"
+	}
+}
+
+func (g *GtkUI) refreshDetailPage(deviceID string) {
+	g.mu.RLock()
+	node, ok := g.deviceMap[deviceID]
+	g.mu.RUnlock()
+	if !ok {
+		return
+	}
+
+	glib.IdleAdd(func() {
+		visible := g.navView.VisiblePage()
+		if visible == nil || visible.Tag() != deviceID {
+			return // user navigated away; leave their current page alone
+		}
+		g.navView.Pop()
+		g.showDeviceDetail(node)
+	})
 }
 
 func (g *GtkUI) showChangeDriverDialog(node *domain.DeviceNode) {
@@ -126,18 +172,22 @@ func (g *GtkUI) showChangeDriverDialog(node *domain.DeviceNode) {
 		go func() {
 			if currentDriver != "" {
 				if err := g.onAction(deviceID, "disable"); err != nil {
-					g.ShowError(err)
 					g.HideProgress()
+					g.ShowError(err)
 					return
 				}
 			}
-			if err := g.onAction(deviceID, "bind:"+driverName); err != nil {
-				g.ShowError(err)
-			}
-			g.HideProgress()
+			err := g.onAction(deviceID, "bind:"+driverName)
 			if g.onRefresh != nil {
 				g.onRefresh()
+				g.refreshDetailPage(deviceID)
 			}
+			g.HideProgress()
+			if err != nil {
+				g.ShowError(err)
+				return
+			}
+			g.showToast(fmt.Sprintf("Driver changed to %s", driverName))
 		}()
 	})
 	dialog.Show()

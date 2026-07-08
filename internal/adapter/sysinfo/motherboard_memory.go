@@ -97,7 +97,7 @@ func (s *Scanner) ScanMemory() []*domain.DeviceNode {
 		modInfo := &domain.MemoryModuleInfo{
 			Label:        label,
 			Location:     mod.Location,
-			SizeBytes:    mod.SizeBytes,
+			Size:         formatMemSize(mod.SizeBytes),
 			Vendor:       mod.Vendor,
 			SerialNumber: mod.SerialNumber,
 		}

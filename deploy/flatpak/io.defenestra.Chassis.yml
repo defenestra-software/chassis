@@ -59,6 +59,9 @@ modules:
         GOROOT: /usr/lib/sdk/golang
         GOTOOLCHAIN: local
     build-commands:
+      # Strip go.mod patch version so the SDK's pinned Go toolchain (GOTOOLCHAIN=local) accepts it
+      - sed -i 's/^go 1\.25\.[0-9]*/go 1.25/' go.mod
+
       # Build binaries with version ldflags
       - |
         VERSION=$(cat dist/.version 2>/dev/null || echo dev)
@@ -75,9 +78,9 @@ modules:
       - install -Dm755 deploy/flatpak/startup.sh /app/bin/startup.sh
       - install -Dm755 deploy/flatpak/daemon.sh /app/bin/daemon.sh
 
-      # Install desktop file and icons
+      # Install desktop file and icons. PNG only: host appstreamcli compose
+      # fails with file-read-error trying to rasterize the scalable SVG.
       - install -Dm644 deploy/flatpak/io.defenestra.Chassis.desktop /app/share/applications/io.defenestra.Chassis.desktop
-      - install -Dm644 deploy/share/icons/hicolor/scalable/apps/io.defenestra.Chassis.svg /app/share/icons/hicolor/scalable/apps/io.defenestra.Chassis.svg
       - install -Dm644 deploy/share/icons/hicolor/256x256/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/256x256/apps/io.defenestra.Chassis.png
       - install -Dm644 deploy/share/icons/hicolor/128x128/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/128x128/apps/io.defenestra.Chassis.png
       - install -Dm644 deploy/share/icons/hicolor/64x64/apps/io.defenestra.Chassis.png /app/share/icons/hicolor/64x64/apps/io.defenestra.Chassis.png
@@ -86,8 +89,9 @@ modules:
       # Install AppStream metadata
       - install -Dm644 dist/io.defenestra.Chassis.metainfo.xml /app/share/metainfo/io.defenestra.Chassis.metainfo.xml
 
-      # Install D-Bus policy
+      # Install D-Bus policy and Polkit actions
       - install -Dm644 api/io.defenestra.Chassis.conf /app/share/dbus-1/system.d/io.defenestra.Chassis.conf
+      - install -Dm644 api/io.defenestra.Chassis.policy /app/share/polkit-1/actions/io.defenestra.Chassis.policy
 
     sources:
       - type: dir
