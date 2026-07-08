@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.4
+- Fixed memory size inconsistencies
+- Fixed race condition in readLoop
+- Fixed CHASSIS_DEBUG variable from being enabled unless actually set to true
+- Fixed detail page refresh issue after operation
+- Added PolicyKit policies on root operation
+
 ## v0.1.3
 - Added VirtIO device classification
 - Updated to go-flatbridge v0.0.4 to fix flatbox false positive detection
