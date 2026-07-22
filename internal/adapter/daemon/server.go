@@ -41,14 +41,9 @@ func (s *Server) Start() error {
 	}
 	s.conn = conn
 
-	reply, err := conn.RequestName(dbusName, dbus.NameFlagReplaceExisting|dbus.NameFlagAllowReplacement)
-	if err != nil {
-		return fmt.Errorf("requesting bus name: %w", err)
-	}
-	if reply != dbus.RequestNameReplyPrimaryOwner && reply != dbus.RequestNameReplyAlreadyOwner {
-		return fmt.Errorf("bus name %s already taken", dbusName)
-	}
-
+	// Export the object before requesting the name.
+	// Under D-Bus activation the bus delivers the triggering method call
+	// the instant the name is acquired.
 	if err := conn.Export(s, dbus.ObjectPath(dbusPath), dbusInterface); err != nil {
 		return fmt.Errorf("exporting object: %w", err)
 	}
@@ -108,6 +103,14 @@ func (s *Server) Start() error {
 		"org.freedesktop.DBus.Introspectable",
 	); err != nil {
 		return fmt.Errorf("exporting introspectable: %w", err)
+	}
+
+	reply, err := conn.RequestName(dbusName, dbus.NameFlagReplaceExisting|dbus.NameFlagAllowReplacement)
+	if err != nil {
+		return fmt.Errorf("requesting bus name: %w", err)
+	}
+	if reply != dbus.RequestNameReplyPrimaryOwner && reply != dbus.RequestNameReplyAlreadyOwner {
+		return fmt.Errorf("bus name %s already taken", dbusName)
 	}
 
 	s.logger.Info("D-Bus service started", "name", dbusName, "path", dbusPath)
