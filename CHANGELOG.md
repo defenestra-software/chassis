@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.5
+- Fixed D-Bus activation issue that resulted in the daemon not responding on first launch 
+
 ## v0.1.4
 - Fixed memory size inconsistencies
 - Fixed race condition in readLoop
@@ -18,7 +21,6 @@
 - Added RPM build
 
 ## v0.1.1
-
 - Bugfix misclassification of ASUS AURA LED Controller
 - Bugfix misclassification of Cyberpower and other UPS
 - Added battery information using UPower to the power device details page with live monitoring
@@ -26,7 +28,6 @@
 - Enable system service to be optional and skipped if the user does not want to install it.
 
 ## v0.1.0
-
 - PCI and USB device scanning with full bus topology
 - GPU details: VRAM, clocks, PCIe link speed/width, VBIOS version, VRAM vendor
 - Display and monitor info from EDID: model, resolution, refresh rate, physical size
