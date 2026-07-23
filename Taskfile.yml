@@ -137,10 +137,14 @@ tasks:
       - cd {{.DIST_DIR}} && ../{{.DEPLOY_DIR}}/rpm/make_srpm.sh
 
   rpm:build:
-    desc: Build RPM locally for testing
+    desc: Build binary RPM locally for testing. Outputs to {{.DIST_DIR}}/
     deps: [rpm:srpm]
     cmds:
-      - rpmbuild --rebuild {{.DIST_DIR}}/defenestra-chassis-*.src.rpm
+      - >-
+        rpmbuild --rebuild
+        --define "_rpmdir {{.DIST_DIR}}"
+        --define "_rpmfilename %{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}.rpm"
+        {{.DIST_DIR}}/defenestra-chassis-*.src.rpm
 
   install:dev:
     desc: Install desktop file and icons for development
