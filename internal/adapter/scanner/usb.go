@@ -164,6 +164,13 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 		class = s.classifyUSBDeviceByInterface(sysfsPath)
 	}
 
+	// Gamepads that declare only vendor-specific interfaces (Xbox protocol,
+	// Stadia in Bluetooth mode) would land as Other with a debug port.
+	isGamepad := s.hasXboxGamepadInterface(sysfsPath) || gamepadDevices[vendorID+":"+productID]
+	if isGamepad && class == domain.DeviceClassOther {
+		class = domain.DeviceClassInput
+	}
+
 	// Override for security keys - these report as HID but users expect
 	// them under Security. Match by known vendor IDs and product names.
 	if class == domain.DeviceClassInput {
@@ -186,8 +193,9 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 	}
 
 	// Check for vendor-specific debug interfaces (JTAG, SWD, etc.)
-	// Skip lighting controllers since RGB devices use vendor-specific interfaces (ff)
-	hasDebug := class != domain.DeviceClassLighting && s.hasVendorDebugInterface(sysfsPath)
+	// Skip lighting controllers and gamepads since both use vendor-specific
+	// interfaces (ff)
+	hasDebug := class != domain.DeviceClassLighting && !isGamepad && s.hasVendorDebugInterface(sysfsPath)
 
 	id := fmt.Sprintf("usb:%s", name)
 
@@ -487,6 +495,37 @@ func (s *GHWScanner) hasVendorDebugInterface(sysfsPath string) bool {
 		}
 		ifaceClass := s.readSysfsFile(filepath.Join(sysfsPath, entry.Name(), "bInterfaceClass"))
 		if ifaceClass == "ff" {
+			return true
+		}
+	}
+	return false
+}
+
+// gamepadDevices lists controllers whose USB descriptors carry no usable
+// class codes (vendor-specific ff/00 interface only).
+var gamepadDevices = map[string]bool{
+	"18d1:9400": true, // Google Stadia Controller (USB side while paired via Bluetooth)
+}
+
+// hasXboxGamepadInterface detects Xbox-protocol controllers by interface
+// descriptors: XInput pads (Xbox 360, Logitech F310/F710) use ff/5d,
+// Xbox One GIP pads use ff/47.
+func (s *GHWScanner) hasXboxGamepadInterface(sysfsPath string) bool {
+	entries, err := os.ReadDir(sysfsPath)
+	if err != nil {
+		return false
+	}
+
+	for _, entry := range entries {
+		if !strings.Contains(entry.Name(), ":") {
+			continue
+		}
+		ifaceClass := s.readSysfsFile(filepath.Join(sysfsPath, entry.Name(), "bInterfaceClass"))
+		if ifaceClass != "ff" {
+			continue
+		}
+		subClass := s.readSysfsFile(filepath.Join(sysfsPath, entry.Name(), "bInterfaceSubClass"))
+		if subClass == "5d" || subClass == "47" {
 			return true
 		}
 	}
