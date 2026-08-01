@@ -25,7 +25,6 @@ func (s *Server) Unbind(sender dbus.Sender, deviceID, busType string) *dbus.Erro
 		return dbus.MakeFailedError(err)
 	}
 
-	// Check if a driver is actually bound
 	driverLink := fmt.Sprintf("/sys/bus/%s/devices/%s/driver", busType, deviceID)
 	driverLink = flatpak.HostPath(driverLink)
 	if _, err := os.Stat(driverLink); os.IsNotExist(err) {
@@ -64,7 +63,6 @@ func (s *Server) Bind(sender dbus.Sender, deviceID, driverName string) *dbus.Err
 	}
 
 	// Auto-load the kernel module if the driver directory doesn't exist yet.
-	// This handles cases like binding to vfio-pci before the module is loaded.
 	driverDir := fmt.Sprintf("/sys/bus/pci/drivers/%s", driverName)
 	driverDir = flatpak.HostPath(driverDir)
 	if _, err := os.Stat(driverDir); os.IsNotExist(err) {
@@ -102,7 +100,6 @@ func (s *Server) DriverProbe(sender dbus.Sender, deviceID string) *dbus.Error {
 		return dbus.MakeFailedError(err)
 	}
 
-	// Determine bus type from device ID format
 	if pciAddressRegex.MatchString(deviceID) {
 		// PCI: write to drivers_probe
 		path := flatpak.HostPath("/sys/bus/pci/drivers_probe")

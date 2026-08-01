@@ -28,7 +28,6 @@ func (d *DisplayInfo) DiagonalInches() float64 {
 	wIn := float64(d.PhysicalWidth) / 25.4
 	hIn := float64(d.PhysicalHeight) / 25.4
 	diag := (wIn*wIn + hIn*hIn)
-	// Simple sqrt approximation using Newton's method
 	x := diag / 2
 	for i := 0; i < 10; i++ {
 		x = (x + diag/x) / 2

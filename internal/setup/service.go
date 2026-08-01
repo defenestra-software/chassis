@@ -26,14 +26,12 @@ const (
 	appID       = "io.defenestra.Chassis"
 )
 
-// ServiceInfo holds the status of a service and any error encountered.
 type ServiceInfo struct {
 	Name   string
 	Status ServiceStatus
 	Error  error
 }
 
-// CheckService checks the status of the system daemon.
 func CheckService() ServiceInfo {
 	info := ServiceInfo{Name: serviceName}
 
@@ -53,8 +51,7 @@ func CheckService() ServiceInfo {
 	return info
 }
 
-// GetFlatpakAppPath returns the Flatpak application files path, using the
-// 'active' symlink so the service continues to work after updates.
+// GetFlatpakAppPath resolves the app files path via the 'active' symlink (survives updates).
 func GetFlatpakAppPath() (string, error) {
 	data, err := exec.Command("grep", "-oP", `app-path=\K.*`, "/.flatpak-info").Output()
 	if err != nil {
@@ -72,7 +69,6 @@ func GetFlatpakAppPath() (string, error) {
 	return strings.Join(parts, "/"), nil
 }
 
-// GetCurrentUser returns the current username.
 func GetCurrentUser() string {
 	if out, err := exec.Command("whoami").Output(); err == nil {
 		return strings.TrimSpace(string(out))
@@ -80,7 +76,6 @@ func GetCurrentUser() string {
 	return ""
 }
 
-// InstallService installs and enables the chassis systemd service.
 func InstallService() (string, error) {
 	if flatpak.InFlatpakEnvironment() {
 		return installFlatpakService()
@@ -142,7 +137,6 @@ systemctl enable --now %s`, unitPath, unitContent, dbusConf, dbusName, polkitPol
 	return strings.TrimSpace(string(output)), err
 }
 
-// WaitForService waits for the service to become active.
 func WaitForService(timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {

@@ -40,9 +40,8 @@ func main() {
 	slog.Info("chassis exiting")
 }
 
-// checkDaemon checks if the system daemon is running.
-// Returns 0 if running, 1 otherwise. Native (non-Flatpak) installs ship the
-// daemon as a D-Bus-activated systemd service, so there is nothing to install
+// checkDaemon returns 0 if running, 1 otherwise. Native installs ship the
+// daemon as a D-Bus-activated systemd unit, so there is nothing to install.
 func checkDaemon() int {
 	if !flatpak.InFlatpakEnvironment() {
 		return 0
@@ -54,8 +53,7 @@ func checkDaemon() int {
 	return 1
 }
 
-// checkSkipSetup returns 0 if the user has opted to skip setup, 1 otherwise.
-// Setup flow is Flatpak-only; outside Flatpak there is no setup to skip.
+// checkSkipSetup is Flatpak-only; outside Flatpak there is no setup to skip.
 func checkSkipSetup() int {
 	if !flatpak.InFlatpakEnvironment() {
 		return 0

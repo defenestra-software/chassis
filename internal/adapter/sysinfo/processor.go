@@ -13,16 +13,13 @@ import (
 	"defenestra.io/chassis/internal/core/domain"
 )
 
-// ScanProcessors returns processor information.
-// On most systems this is one physical CPU package, but multi-socket
-// systems will return multiple entries.
+// ScanProcessors returns one node per physical package (multi-socket systems included).
 func (s *Scanner) ScanProcessors() []*domain.DeviceNode {
 	info := s.readCPUInfo()
 	if info == nil {
 		return nil
 	}
 
-	// Build subtitle for list view: "8 cores, 16 threads · 4.67 GHz"
 	subtitle := info.CoreString()
 	if info.MaxFreqMHz > 0 {
 		if subtitle != "" {
@@ -42,9 +39,6 @@ func (s *Scanner) ScanProcessors() []*domain.DeviceNode {
 		IOMMUGroup:    -1,
 		Children:      make([]*domain.DeviceNode, 0),
 	}
-
-	// Stash the ProcessorInfo pointer via a map in the service layer instead.
-	// For now, the detail page can re-scan.
 
 	return []*domain.DeviceNode{node}
 }
@@ -105,7 +99,6 @@ func (s *Scanner) readCPUInfo() *domain.ProcessorInfo {
 		}
 	}
 
-	// Count physical cores from sysfs (more reliable than /proc/cpuinfo)
 	cpuPath := flatpak.HostPath("/sys/devices/system/cpu")
 	coreIDs := map[string]bool{}
 	entries, _ := os.ReadDir(cpuPath)
@@ -124,7 +117,6 @@ func (s *Scanner) readCPUInfo() *domain.ProcessorInfo {
 		info.Cores = len(coreIDs)
 	}
 
-	// Read frequency from cpufreq
 	maxFreq := readFile(filepath.Join(cpuPath, "cpu0", "cpufreq", "cpuinfo_max_freq"))
 	if maxFreq != "" {
 		if khz, err := strconv.ParseFloat(maxFreq, 64); err == nil {
@@ -138,7 +130,6 @@ func (s *Scanner) readCPUInfo() *domain.ProcessorInfo {
 		}
 	}
 
-	// Read cache sizes
 	cachePath := filepath.Join(cpuPath, "cpu0", "cache")
 	cacheEntries, _ := os.ReadDir(cachePath)
 	for _, entry := range cacheEntries {

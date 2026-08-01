@@ -188,13 +188,11 @@ func (s *DeviceService) enrichSystemInfo(tree *domain.DeviceNode) {
 		tree.Children = filtered
 
 		for i, mod := range info.MemoryModules {
-			// Try to identify vendor from part number if manufacturer is unknown
 			vendor := filterUnknown(mod.Vendor)
 			if vendor == "" && mod.Part != "" {
 				vendor = inferVendorFromPartNumber(mod.Part)
 			}
 
-			// Build name: "TeamGroup 32 GB DDR4" or "32 GB DDR4"
 			nameParts := []string{}
 			if vendor != "" {
 				nameParts = append(nameParts, vendor)
@@ -205,7 +203,6 @@ func (s *DeviceService) enrichSystemInfo(tree *domain.DeviceNode) {
 			}
 			name := strings.Join(nameParts, " ")
 
-			// Build subtitle: "DIMM_A1 · 3200 MT/s"
 			subtitle := mod.Label
 			if mod.Speed != "" && mod.Speed != "Unknown" {
 				subtitle = subtitle + " · " + mod.Speed
@@ -322,11 +319,10 @@ func (s *DeviceService) BindDriver(deviceID, driverName string) error {
 	return nil
 }
 
-// For PCI devices this writes to drivers_probe. For USB devices this rescans the bus.
+// RestoreDriver: PCI writes drivers_probe; USB rescans the bus.
 func (s *DeviceService) RestoreDriver(deviceID, busType string) error {
 	s.logger.Info("restoring default driver", "device", deviceID, "bus", busType)
 
-	// Unbind current driver first (ignore error if already unbound)
 	if err := s.mutator.Unbind(deviceID, busType); err != nil {
 		s.logger.Debug("unbind during restore (may already be unbound)", "error", err)
 	}

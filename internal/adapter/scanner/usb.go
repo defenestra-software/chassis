@@ -34,7 +34,6 @@ func (s *GHWScanner) scanUSBDevices() (*domain.DeviceNode, error) {
 
 	for _, entry := range entries {
 		name := entry.Name()
-		// Skip interfaces (contain :), only process devices
 		if strings.Contains(name, ":") {
 			continue
 		}
@@ -46,7 +45,6 @@ func (s *GHWScanner) scanUSBDevices() (*domain.DeviceNode, error) {
 		}
 	}
 
-	// Build hierarchy - USB devices have parent relationships like 1-0 -> 1-1 -> 1-1.1
 	for _, node := range deviceMap {
 		parentID := s.findUSBParent(node.ID, deviceMap)
 		if parentID != "" {
@@ -56,21 +54,17 @@ func (s *GHWScanner) scanUSBDevices() (*domain.DeviceNode, error) {
 				continue
 			}
 		}
-		// Top-level USB device (root hub)
 		node.ParentID = "usb"
 		usbRoot.Children = append(usbRoot.Children, node)
 	}
 
-	// Scan HID bus for paired peripherals behind receivers (e.g., Logitech
-	// Unifying/Bolt mice and keyboards). These are HID devices with a
-	// different VID:PID than their parent USB device.
+	// HID behind Unifying/Bolt: different VID:PID than the parent USB dongle.
 	s.scanHIDPeripherals(deviceMap)
 
 	return usbRoot, nil
 }
 
 func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode {
-	// Read device info
 	vendorID := s.readSysfsFile(filepath.Join(sysfsPath, "idVendor"))
 	productID := s.readSysfsFile(filepath.Join(sysfsPath, "idProduct"))
 	manufacturer := s.readSysfsFile(filepath.Join(sysfsPath, "manufacturer"))
@@ -78,7 +72,6 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 	bDeviceClass := s.readSysfsFile(filepath.Join(sysfsPath, "bDeviceClass"))
 	driver := s.readDriver(sysfsPath)
 
-	// If driver is generic "usb", try to find a more specific interface-level driver
 	if driver == "" || driver == "usb" {
 		if betterDriver := s.findInterfaceDriver(sysfsPath, name); betterDriver != "" {
 			driver = betterDriver
@@ -87,28 +80,23 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 		}
 	}
 
-	// Read USB speed and port count
 	usbSpeed := s.readSysfsFile(filepath.Join(sysfsPath, "speed"))
 	maxPorts := s.readSysfsFile(filepath.Join(sysfsPath, "maxchild"))
 
-	// Skip if no vendor/product ID (not a real device)
 	if vendorID == "" && productID == "" {
-		// Check if it's a root hub
 		if product == "" && manufacturer == "" {
 			return nil
 		}
 	}
 
-	// Clean up root hub names - kernel puts full version string in manufacturer
+	// Kernel puts the full xhci version string in root-hub manufacturer.
 	isRootHub := strings.HasPrefix(name, "usb")
 	if isRootHub && manufacturer != "" && strings.Contains(manufacturer, "xhci-hcd") {
 		manufacturer = ""
 	}
 
-	// Build name
 	deviceName := name
 	if isRootHub {
-		// Friendly name for root hubs based on USB version and speed
 		speedLabel := ""
 		switch {
 		case usbSpeed == "10000":
@@ -134,7 +122,6 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 		deviceName = manufacturer
 	}
 
-	// For non-root USB devices, add speed to product for subtitle display
 	if !isRootHub && usbSpeed != "" {
 		speedLabel := ""
 		switch usbSpeed {
@@ -156,9 +143,7 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 		}
 	}
 
-	// Determine device class - check device level first, then fall back
-	// to interface-level descriptors (many USB devices report class 00 or ef
-	// at the device level and define their actual class at the interface level)
+	// Class 00/ef at device level means the real class is on the interface.
 	class := s.classifyUSBDevice(bDeviceClass)
 	if class == domain.DeviceClassOther {
 		class = s.classifyUSBDeviceByInterface(sysfsPath)
@@ -171,30 +156,23 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 		class = domain.DeviceClassInput
 	}
 
-	// Override for security keys - these report as HID but users expect
-	// them under Security. Match by known vendor IDs and product names.
+	// Security keys report as HID; reclassify by known VID/product name.
 	if class == domain.DeviceClassInput {
 		class = s.reclassifySecurityKey(class, vendorID, product)
 	}
 
-	// Override for UPS devices (report as HID)
 	if class == domain.DeviceClassInput {
 		class = s.reclassifyUPS(class, vendorID, productID)
 	}
 
-	// Override for known non-input HID devices (RGB controllers, etc.)
-	// Check regardless of current class - some RGB controllers report as
-	// HID (Input), others as vendor-specific (Other).
+	// RGB controllers may report as HID or vendor-specific Other.
 	class = s.reclassifyMiscHID(class, vendorID, productID)
 
-	// Override for portable devices (phones, tablets, media players)
 	if class == domain.DeviceClassOther {
 		class = s.reclassifyPortableDevice(class, vendorID, product, sysfsPath)
 	}
 
-	// Check for vendor-specific debug interfaces (JTAG, SWD, etc.)
-	// Skip lighting controllers and gamepads since both use vendor-specific
-	// interfaces (ff)
+	// ff interfaces are debug probes; skip RGB/gamepads that also use ff.
 	hasDebug := class != domain.DeviceClassLighting && !isGamepad && s.hasVendorDebugInterface(sysfsPath)
 
 	id := fmt.Sprintf("usb:%s", name)
@@ -224,12 +202,10 @@ func (s *GHWScanner) findUSBParent(id string, deviceMap map[string]*domain.Devic
 	// e.g., 1-1.2.3 -> parent is 1-1.2 -> parent is 1-1 -> parent is 1-0 (root hub)
 	name := strings.TrimPrefix(id, "usb:")
 
-	// Root hubs (like "usb1", "usb2") have no parent
 	if strings.HasPrefix(name, "usb") {
 		return ""
 	}
 
-	// Find last dot or dash
 	lastDot := strings.LastIndex(name, ".")
 	lastDash := strings.LastIndex(name, "-")
 
@@ -244,10 +220,8 @@ func (s *GHWScanner) findUSBParent(id string, deviceMap map[string]*domain.Devic
 	return ""
 }
 
-// scanHIDPeripherals finds wireless peripherals (mice, keyboards) behind USB
-// receivers by scanning /sys/bus/hid/devices/. Devices with a VID:PID that
-// differs from their parent USB device are actual peripherals, not just
-// additional HID collections of the same device.
+// scanHIDPeripherals finds wireless peripherals behind receivers (HID VID:PID
+// differs from the parent USB device; same VID:PID is just another collection).
 func (s *GHWScanner) scanHIDPeripherals(usbDeviceMap map[string]*domain.DeviceNode) {
 	hidPath := "/sys/bus/hid/devices"
 	if s.chrootPath != "" {
@@ -259,13 +233,11 @@ func (s *GHWScanner) scanHIDPeripherals(usbDeviceMap map[string]*domain.DeviceNo
 		return
 	}
 
-	// Track which HID VID:PIDs we've already added (skip duplicate collections)
 	seen := map[string]bool{}
 
 	for _, entry := range entries {
 		devPath := filepath.Join(hidPath, entry.Name())
 
-		// Parse HID device name: BBBB:VVVV:PPPP.NNNN
 		parts := strings.SplitN(entry.Name(), ":", 3)
 		if len(parts) != 3 {
 			continue
@@ -278,12 +250,10 @@ func (s *GHWScanner) scanHIDPeripherals(usbDeviceMap map[string]*domain.DeviceNo
 		hidPID := strings.ToLower(pidParts[0])
 		hidVIDPID := hidVID + ":" + hidPID
 
-		// Skip if we already processed this VID:PID
 		if seen[hidVIDPID] {
 			continue
 		}
 
-		// Find the parent USB device by walking up the sysfs path
 		resolvedPath, err := filepath.EvalSymlinks(devPath)
 		if err != nil {
 			continue
@@ -305,29 +275,23 @@ func (s *GHWScanner) scanHIDPeripherals(usbDeviceMap map[string]*domain.DeviceNo
 			continue
 		}
 
-		// Get the parent USB device's VID:PID
 		parentNode, ok := usbDeviceMap["usb:"+parentUSBAddr]
 		if !ok {
 			continue
 		}
 		parentUSBVIDPID = strings.ToLower(parentNode.VendorID + ":" + parentNode.ProductID)
 
-		// If VID:PID matches the parent USB device, it's just another HID
-		// collection of the same device (e.g., keyboard's media keys endpoint).
-		// Skip it - the USB device already represents it.
 		if hidVIDPID == parentUSBVIDPID {
 			continue
 		}
 
 		seen[hidVIDPID] = true
 
-		// This is a paired peripheral behind a receiver. Read its info.
 		hidName := s.readHIDUeventField(devPath, "HID_NAME")
 		if hidName == "" {
 			continue
 		}
 
-		// Determine class from driver or name
 		driver := s.readDriver(devPath)
 		class := s.classifyHIDPeripheral(hidName, driver)
 
@@ -387,7 +351,6 @@ func (s *GHWScanner) classifyHIDPeripheral(name, driver string) domain.DeviceCla
 		return domain.DeviceClassAudio
 	}
 
-	// Check driver name
 	switch driver {
 	case "logitech-hidpp-device":
 		return domain.DeviceClassInput
@@ -397,7 +360,6 @@ func (s *GHWScanner) classifyHIDPeripheral(name, driver string) domain.DeviceCla
 }
 
 func (s *GHWScanner) classifyUSBDevice(bDeviceClass string) domain.DeviceClass {
-	// USB device-level class codes
 	switch bDeviceClass {
 	case "09":
 		return domain.DeviceClassHub
@@ -420,18 +382,13 @@ func (s *GHWScanner) classifyUSBDevice(bDeviceClass string) domain.DeviceClass {
 	}
 }
 
-// classifyUSBDeviceByInterface checks interface-level descriptors when the
-// device-level class is 00 (defined at interface) or ef (miscellaneous).
-// Many USB devices like webcams, BLE adapters, and audio devices only declare
-// their actual function at the interface level (bInterfaceClass).
+// classifyUSBDeviceByInterface uses bInterfaceClass when device class is 00/ef.
 func (s *GHWScanner) classifyUSBDeviceByInterface(sysfsPath string) domain.DeviceClass {
 	entries, err := os.ReadDir(sysfsPath)
 	if err != nil {
 		return domain.DeviceClassOther
 	}
 
-	// Interface directories look like "1-2:1.0" (contain a colon)
-	// Use a priority system: some classes are more significant than others
 	best := domain.DeviceClassOther
 	bestPriority := 0
 
@@ -480,9 +437,7 @@ func classifyUSBInterfaceClass(bInterfaceClass string) (domain.DeviceClass, int)
 	}
 }
 
-// hasVendorDebugInterface checks if a USB device has a vendor-specific interface
-// (bInterfaceClass ff) that is likely a debug/programming port (JTAG, SWD, etc.).
-// Common on debug probes like J-Link, ST-Link, CMSIS-DAP, Black Magic Probe.
+// hasVendorDebugInterface is true when an interface is class ff (JTAG/SWD probes).
 func (s *GHWScanner) hasVendorDebugInterface(sysfsPath string) bool {
 	entries, err := os.ReadDir(sysfsPath)
 	if err != nil {
@@ -501,8 +456,7 @@ func (s *GHWScanner) hasVendorDebugInterface(sysfsPath string) bool {
 	return false
 }
 
-// gamepadDevices lists controllers whose USB descriptors carry no usable
-// class codes (vendor-specific ff/00 interface only).
+// gamepadDevices: controllers with no usable USB class codes (ff/00 only).
 var gamepadDevices = map[string]bool{
 	"18d1:9400": true, // Google Stadia Controller (USB side while paired via Bluetooth)
 }
@@ -532,8 +486,7 @@ func (s *GHWScanner) hasXboxGamepadInterface(sysfsPath string) bool {
 	return false
 }
 
-// findInterfaceDriver checks USB interface directories and HID sub-devices
-// for a more specific driver than the generic "usb" device driver.
+// findInterfaceDriver prefers an interface/HID driver over generic "usb".
 func (s *GHWScanner) findInterfaceDriver(sysfsPath, deviceName string) string {
 	entries, err := os.ReadDir(sysfsPath)
 	if err != nil {
@@ -544,7 +497,6 @@ func (s *GHWScanner) findInterfaceDriver(sysfsPath, deviceName string) string {
 	bestDriver := ""
 
 	for _, entry := range entries {
-		// Interface dirs look like "1-4:1.0"
 		if !strings.Contains(entry.Name(), ":") {
 			continue
 		}
@@ -558,7 +510,6 @@ func (s *GHWScanner) findInterfaceDriver(sysfsPath, deviceName string) string {
 		drv := filepath.Base(target)
 
 		if drv == "usbhid" {
-			// Check HID sub-devices for a more specific driver (e.g., razerkbd)
 			if hidDriver := s.findHIDDriver(ifacePath); hidDriver != "" {
 				return hidDriver
 			}
@@ -575,7 +526,6 @@ func (s *GHWScanner) findInterfaceDriver(sysfsPath, deviceName string) string {
 	return bestDriver
 }
 
-// findHIDDriver checks HID sub-device directories for a specific driver.
 func (s *GHWScanner) findHIDDriver(ifacePath string) string {
 	entries, err := os.ReadDir(ifacePath)
 	if err != nil {
@@ -618,12 +568,10 @@ var securityKeyPatterns = []string{
 }
 
 func (s *GHWScanner) reclassifySecurityKey(current domain.DeviceClass, vendorID, product string) domain.DeviceClass {
-	// Check vendor ID
 	if securityKeyVendors[vendorID] {
 		return domain.DeviceClassSecurity
 	}
 
-	// Check product name patterns
 	productLower := strings.ToLower(product)
 	for _, pattern := range securityKeyPatterns {
 		if strings.Contains(productLower, pattern) {
@@ -779,8 +727,6 @@ var rgbControllerDevices = map[string]bool{
 }
 
 // reclassifyMiscHID catches HID devices that aren't really input devices.
-// Classification is based solely on known VID:PID pairs - product name
-// matching is too unreliable since vendors reuse branding terms like
 // "Chroma", "Aura", and "Mystic Light" across keyboards, mice, and
 // actual RGB controllers.
 func (s *GHWScanner) reclassifyMiscHID(current domain.DeviceClass, vendorID, productID string) domain.DeviceClass {
@@ -819,12 +765,10 @@ var portableNamePatterns = []string{
 }
 
 func (s *GHWScanner) reclassifyPortableDevice(current domain.DeviceClass, vendorID, product, sysfsPath string) domain.DeviceClass {
-	// Check vendor ID
 	if portableDeviceVendors[vendorID] {
 		return domain.DeviceClassPortable
 	}
 
-	// Check product name
 	productLower := strings.ToLower(product)
 	for _, pattern := range portableNamePatterns {
 		if strings.Contains(productLower, pattern) {
@@ -832,7 +776,6 @@ func (s *GHWScanner) reclassifyPortableDevice(current domain.DeviceClass, vendor
 		}
 	}
 
-	// Check for ADB interface (class ff, subclass 42, proto 01)
 	entries, err := os.ReadDir(sysfsPath)
 	if err == nil {
 		for _, entry := range entries {

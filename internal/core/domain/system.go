@@ -3,18 +3,15 @@ package domain
 import "fmt"
 
 type MotherboardInfo struct {
-	// Baseboard
 	Vendor       string
 	Product      string
 	Version      string
 	SerialNumber string
 
-	// BIOS/Firmware
 	BIOSVendor  string
 	BIOSVersion string
 	BIOSDate    string
 
-	// Memory summary
 	TotalMemoryBytes int64
 	MemoryModules    int
 }

@@ -16,7 +16,7 @@ type GHWScanner struct {
 	cache      *domain.DeviceNode
 }
 
-// Use chrootPath for Flatpak/container environments, empty string for native.
+// NewGHWScanner uses chrootPath for Flatpak/container; empty means native host.
 func NewGHWScanner(chrootPath string) *GHWScanner {
 	return &GHWScanner{
 		chrootPath: chrootPath,
@@ -31,7 +31,6 @@ func (s *GHWScanner) Scan() (*domain.DeviceNode, error) {
 		opts = append(opts, ghw.WithChroot(s.chrootPath))
 	}
 
-	// Create root node
 	root := &domain.DeviceNode{
 		ID:       "root",
 		Name:     "System Devices",
@@ -40,12 +39,10 @@ func (s *GHWScanner) Scan() (*domain.DeviceNode, error) {
 		Children: make([]*domain.DeviceNode, 0),
 	}
 
-	// Scan PCI devices
 	if pciRoot, err := s.scanPCIDevices(opts); err == nil {
 		root.Children = append(root.Children, pciRoot)
 	}
 
-	// Scan USB devices
 	if usbRoot, err := s.scanUSBDevices(); err == nil && len(usbRoot.Children) > 0 {
 		root.Children = append(root.Children, usbRoot)
 	}
@@ -117,7 +114,6 @@ func (s *GHWScanner) collectByIOMMU(node *domain.DeviceNode, group int, result *
 	}
 }
 
-// Refresh clears the cache and rescans devices.
 func (s *GHWScanner) Refresh() (*domain.DeviceNode, error) {
 	s.cache = nil
 	return s.Scan()

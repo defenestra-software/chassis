@@ -14,7 +14,6 @@ import (
 )
 
 func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
-	// Header bar with search toggle and patched CSD controls
 	headerBar := adw.NewHeaderBar()
 	kit.PatchHeaderBar(headerBar, g.window)
 
@@ -23,7 +22,6 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 	g.searchBtn.SetTooltipText("Search devices")
 	headerBar.PackEnd(g.searchBtn)
 
-	// Search bar
 	g.searchEntry = gtk.NewSearchEntry()
 	g.searchEntry.SetPlaceholderText("Search devices…")
 	g.searchEntry.SetHExpand(true)
@@ -44,12 +42,10 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 		g.onSearchChanged(g.searchEntry.Text())
 	})
 
-	// Device list
 	g.deviceListBox = gtk.NewListBox()
 	g.deviceListBox.AddCSSClass("boxed-list")
 	g.deviceListBox.SetSelectionMode(gtk.SelectionNone)
 	g.deviceListBox.ConnectRowActivated(func(row *gtk.ListBoxRow) {
-		// Row name format: "deviceID|scrollTag" or just "deviceID"
 		name := row.Name()
 		deviceID := name
 		scrollTag := ""
@@ -65,7 +61,6 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 		}
 	})
 
-	// Device list in a scrolled window
 	listBox := gtk.NewBox(gtk.OrientationVertical, 0)
 	listBox.SetMarginStart(12)
 	listBox.SetMarginEnd(12)
@@ -82,13 +77,11 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 	scroll.SetVExpand(true)
 	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
 
-	// Placeholder for empty state
 	placeholder := adw.NewStatusPage()
 	placeholder.SetIconName("computer-symbolic")
 	placeholder.SetTitle("Select a Category")
 	placeholder.SetDescription("Choose a device category from the sidebar to browse hardware")
 
-	// IOMMU grouped view
 	g.iommuViewBox = gtk.NewBox(gtk.OrientationVertical, 12)
 	g.iommuViewBox.SetMarginStart(12)
 	g.iommuViewBox.SetMarginEnd(12)
@@ -104,14 +97,12 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 	iommuScroll.SetVExpand(true)
 	iommuScroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
 
-	// Stack to switch between placeholder, device list, and IOMMU view
 	g.contentStack = gtk.NewStack()
 	g.contentStack.AddNamed(placeholder, "placeholder")
 	g.contentStack.AddNamed(scroll, "list")
 	g.contentStack.AddNamed(iommuScroll, "iommu")
 	g.contentStack.SetVisibleChildName("placeholder")
 
-	// Container
 	contentBox := gtk.NewBox(gtk.OrientationVertical, 0)
 	contentBox.Append(g.searchBar)
 	contentBox.Append(g.contentStack)
@@ -130,20 +121,16 @@ func (g *GtkUI) rebuildDeviceList() {
 	filter := g.filterText
 	g.mu.RUnlock()
 
-	// When searching with text, search ALL devices globally
-	// (except in IOMMU grouped view which filters within itself)
 	if filter != "" && view != "iommu:all" {
 		g.rebuildGlobalSearchResults(filter)
 		return
 	}
 
-	// IOMMU grouped view is special - uses preference groups instead of flat list
 	if view == "iommu:all" {
 		g.rebuildIOMMUGroupedView()
 		return
 	}
 
-	// Clear existing rows
 	for {
 		row := g.deviceListBox.RowAtIndex(0)
 		if row == nil {
@@ -167,7 +154,6 @@ func (g *GtkUI) rebuildDeviceList() {
 }
 
 func (g *GtkUI) rebuildGlobalSearchResults(filter string) {
-	// Clear existing rows
 	for {
 		row := g.deviceListBox.RowAtIndex(0)
 		if row == nil {
@@ -180,7 +166,6 @@ func (g *GtkUI) rebuildGlobalSearchResults(filter string) {
 	allDevices := g.deviceMap
 	g.mu.RUnlock()
 
-	// Collect matching interface entries from across all categories
 	var matches []interfaceEntry
 	seen := map[string]bool{}
 	for _, node := range allDevices {
@@ -190,8 +175,6 @@ func (g *GtkUI) rebuildGlobalSearchResults(filter string) {
 		if len(node.Interfaces) == 0 {
 			continue
 		}
-		// Add the primary interface (first one) for search results
-		// to avoid listing the same device N times
 		if !seen[node.ID] {
 			seen[node.ID] = true
 			matches = append(matches, interfaceEntry{
@@ -206,7 +189,6 @@ func (g *GtkUI) rebuildGlobalSearchResults(filter string) {
 		return
 	}
 
-	// Sort by name for consistent ordering
 	sort.Slice(matches, func(i, j int) bool {
 		return matches[i].Device.Name < matches[j].Device.Name
 	})
@@ -221,7 +203,6 @@ func (g *GtkUI) rebuildGlobalSearchResults(filter string) {
 }
 
 func (g *GtkUI) rebuildIOMMUGroupedView() {
-	// Clear existing children
 	for child := g.iommuViewBox.FirstChild(); child != nil; child = g.iommuViewBox.FirstChild() {
 		g.iommuViewBox.Remove(child)
 	}
@@ -231,7 +212,6 @@ func (g *GtkUI) rebuildIOMMUGroupedView() {
 	filter := g.filterText
 	g.mu.RUnlock()
 
-	// Collect and sort group numbers
 	var groupNums []int
 	for num, devices := range groups {
 		if num >= 0 && len(devices) > 0 {
@@ -293,7 +273,6 @@ func (g *GtkUI) getEntriesForView() []interfaceEntry {
 		return nil
 	}
 
-	// IOMMU groups return devices (not interfaces) - wrap in entries
 	if strings.HasPrefix(view, "iommu:") {
 		return nil // Handled separately by rebuildIOMMUGroupedView
 	}
@@ -307,7 +286,6 @@ func (g *GtkUI) createDeviceRow(entry interfaceEntry) *gtk.ListBoxRow {
 	iface := entry.Interface
 
 	row := gtk.NewListBoxRow()
-	// Encode device ID + scroll tag so the click handler knows where to scroll
 	rowName := node.ID
 	if iface.ScrollTag != "" {
 		rowName = node.ID + "|" + iface.ScrollTag
@@ -326,14 +304,12 @@ func (g *GtkUI) createDeviceRow(entry interfaceEntry) *gtk.ListBoxRow {
 	actionRow.SetTitleLines(2)
 	actionRow.SetTooltipText(node.Name)
 
-	// Subtitle comes from the interface - already computed during extraction
 	if iface.Subtitle != "" {
 		actionRow.SetSubtitle(iface.Subtitle)
 	} else if node.Driver != "" {
 		actionRow.SetSubtitle(node.Driver)
 	}
 
-	// Icon from the interface's category
 	iconName := getCategoryIcon(iface.Category)
 	if iconName == "" {
 		iconName = g.getIconName(node)
@@ -345,7 +321,6 @@ func (g *GtkUI) createDeviceRow(entry interfaceEntry) *gtk.ListBoxRow {
 	return row
 }
 
-// createDeviceRowSimple creates a row for IOMMU group views (no interface context).
 func (g *GtkUI) createDeviceRowSimple(node *domain.DeviceNode) *gtk.ListBoxRow {
 	row := gtk.NewListBoxRow()
 	row.SetName(node.ID)
@@ -375,7 +350,6 @@ func (g *GtkUI) onSearchChanged(text string) {
 
 	g.rebuildDeviceList()
 
-	// Restore category title when search is cleared
 	if filter == "" {
 		g.mu.RLock()
 		view := g.selectedView
@@ -387,7 +361,6 @@ func (g *GtkUI) onSearchChanged(text string) {
 		}
 	}
 
-	// Show content when searching in collapsed mode
 	if filter != "" {
 		g.splitView.SetShowContent(true)
 	}

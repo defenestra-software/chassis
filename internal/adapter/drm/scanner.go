@@ -29,12 +29,10 @@ func NewScanner(logger *slog.Logger) *Scanner {
 	return &Scanner{logger: logger}
 }
 
-// Refresh clears the cache so the next scan reads fresh data.
 func (s *Scanner) Refresh() {
 	s.cache = nil
 }
 
-// ScanGPUs returns information about all GPUs with their connected monitors.
 func (s *Scanner) ScanGPUs() ([]*domain.GPUInfo, error) {
 	if s.cache != nil {
 		return s.cache, nil
@@ -42,7 +40,6 @@ func (s *Scanner) ScanGPUs() ([]*domain.GPUInfo, error) {
 
 	var gpus []*domain.GPUInfo
 
-	// Find all DRM cards in /sys/class/drm
 	pattern := flatpak.HostPath("/sys/class/drm/card[0-9]*")
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
@@ -52,7 +49,6 @@ func (s *Scanner) ScanGPUs() ([]*domain.GPUInfo, error) {
 	cardPattern := regexp.MustCompile(`/card(\d+)$`)
 
 	for _, cardPath := range matches {
-		// Skip connector entries like card0-HDMI-A-1
 		if strings.Contains(filepath.Base(cardPath), "-") {
 			continue
 		}
@@ -73,26 +69,20 @@ func (s *Scanner) ScanGPUs() ([]*domain.GPUInfo, error) {
 	return gpus, nil
 }
 
-// scanCard scans a single DRM card for GPU and monitor info.
 func (s *Scanner) scanCard(cardIndex int, sysfsPath string) *domain.GPUInfo {
 	gpu := &domain.GPUInfo{
 		CardIndex: cardIndex,
 		CardPath:  fmt.Sprintf("/dev/dri/card%d", cardIndex),
 	}
 
-	// Get PCI device address from sysfs symlink
 	gpu.PCIDevice = s.getPCIDevice(sysfsPath)
 
-	// Get driver name from sysfs
 	gpu.DriverName = s.getDriverName(sysfsPath)
 
-	// Try to get driver version via DRM ioctl
 	s.getDriverVersion(gpu)
 
-	// Get hardware info (VRAM, clocks, subsystem IDs)
 	s.getHardwareInfo(gpu, sysfsPath)
 
-	// Scan connectors
 	gpu.Monitors = s.scanConnectors(cardIndex)
 
 	s.logger.Debug("scanned GPU",
@@ -106,24 +96,20 @@ func (s *Scanner) scanCard(cardIndex int, sysfsPath string) *domain.GPUInfo {
 	return gpu
 }
 
-// getPCIDevice extracts the PCI address from the card's sysfs symlink.
 func (s *Scanner) getPCIDevice(sysfsPath string) string {
 	link, err := os.Readlink(sysfsPath)
 	if err != nil {
 		return ""
 	}
 
-	// Extract PCI address pattern (e.g., 0000:03:00.0)
 	pciPattern := regexp.MustCompile(`([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9])`)
 	matches := pciPattern.FindAllString(link, -1)
 	if len(matches) > 0 {
-		// Return the last match (the actual GPU, not bridges)
 		return matches[len(matches)-1]
 	}
 	return ""
 }
 
-// getDriverName reads the driver name from sysfs.
 func (s *Scanner) getDriverName(sysfsPath string) string {
 	driverPath := filepath.Join(sysfsPath, "device", "driver")
 	link, err := os.Readlink(driverPath)
@@ -133,7 +119,6 @@ func (s *Scanner) getDriverName(sysfsPath string) string {
 	return filepath.Base(link)
 }
 
-// getDriverVersion attempts to get driver version via DRM ioctl.
 func (s *Scanner) getDriverVersion(gpu *domain.GPUInfo) {
 	devPath := flatpak.HostPath(gpu.CardPath)
 	file, err := os.Open(devPath)
@@ -155,25 +140,21 @@ func (s *Scanner) getDriverVersion(gpu *domain.GPUInfo) {
 	gpu.DriverDesc = version.Desc
 }
 
-// getHardwareInfo reads VRAM, clocks, and subsystem IDs from sysfs.
 func (s *Scanner) getHardwareInfo(gpu *domain.GPUInfo, sysfsPath string) {
 	devicePath := filepath.Join(sysfsPath, "device")
 
-	// Read VRAM total
 	if data, err := os.ReadFile(filepath.Join(devicePath, "mem_info_vram_total")); err == nil {
 		if val, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64); err == nil {
 			gpu.VRAMTotal = val
 		}
 	}
 
-	// Read VRAM used
 	if data, err := os.ReadFile(filepath.Join(devicePath, "mem_info_vram_used")); err == nil {
 		if val, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64); err == nil {
 			gpu.VRAMUsed = val
 		}
 	}
 
-	// Read subsystem vendor/device IDs
 	if data, err := os.ReadFile(filepath.Join(devicePath, "subsystem_vendor")); err == nil {
 		gpu.SubsystemVendor = strings.TrimSpace(strings.TrimPrefix(string(data), "0x"))
 	}
@@ -181,26 +162,21 @@ func (s *Scanner) getHardwareInfo(gpu *domain.GPUInfo, sysfsPath string) {
 		gpu.SubsystemDevice = strings.TrimSpace(strings.TrimPrefix(string(data), "0x"))
 	}
 
-	// Read VRAM vendor
 	if data, err := os.ReadFile(filepath.Join(devicePath, "mem_info_vram_vendor")); err == nil {
 		vendor := strings.TrimSpace(string(data))
 		if vendor != "" && vendor != "unknown" {
-			// Capitalize first letter
 			gpu.VRAMVendor = strings.ToUpper(vendor[:1]) + vendor[1:]
 		}
 	}
 
-	// Read VBIOS version
 	if data, err := os.ReadFile(filepath.Join(devicePath, "vbios_version")); err == nil {
 		gpu.VBIOSVersion = strings.TrimSpace(string(data))
 	}
 
-	// Read GPU unique ID (serial)
 	if data, err := os.ReadFile(filepath.Join(devicePath, "unique_id")); err == nil {
 		gpu.UniqueID = strings.TrimSpace(string(data))
 	}
 
-	// Read PCIe link info
 	if data, err := os.ReadFile(filepath.Join(devicePath, "current_link_speed")); err == nil {
 		gpu.PCIeLinkSpeed = strings.TrimSpace(string(data))
 	}
@@ -214,16 +190,13 @@ func (s *Scanner) getHardwareInfo(gpu *domain.GPUInfo, sysfsPath string) {
 		gpu.MaxLinkWidth = strings.TrimSpace(string(data))
 	}
 
-	// Read clock info from pp_od_clk_voltage (AMD specific)
 	s.parseAMDClocks(gpu, devicePath)
 
-	// Try Intel-specific paths if AMD didn't work
 	if gpu.GPUClockMax == 0 {
 		s.parseIntelClocks(gpu, devicePath)
 	}
 }
 
-// parseAMDClocks extracts clock info from AMD's pp_od_clk_voltage sysfs file.
 func (s *Scanner) parseAMDClocks(gpu *domain.GPUInfo, devicePath string) {
 	data, err := os.ReadFile(filepath.Join(devicePath, "pp_od_clk_voltage"))
 	if err != nil {
@@ -252,7 +225,6 @@ func (s *Scanner) parseAMDClocks(gpu *domain.GPUInfo, devicePath string) {
 			continue
 		}
 
-		// Parse clock lines like "0: 255Mhz" or "1: 2855Mhz"
 		if inSCLK || inMCLK {
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
@@ -277,9 +249,7 @@ func (s *Scanner) parseAMDClocks(gpu *domain.GPUInfo, devicePath string) {
 	}
 }
 
-// parseIntelClocks extracts clock info from Intel's sysfs entries.
 func (s *Scanner) parseIntelClocks(gpu *domain.GPUInfo, devicePath string) {
-	// Intel exposes clocks differently - try gt_max_freq_mhz
 	if data, err := os.ReadFile(filepath.Join(devicePath, "gt_max_freq_mhz")); err == nil {
 		if val, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 32); err == nil {
 			gpu.GPUClockMax = uint32(val)
@@ -292,21 +262,17 @@ func (s *Scanner) parseIntelClocks(gpu *domain.GPUInfo, devicePath string) {
 	}
 }
 
-// scanConnectors finds all connectors for a card and their status.
 func (s *Scanner) scanConnectors(cardIndex int) []*domain.Monitor {
 	var monitors []*domain.Monitor
 
-	// First try DRM ioctl for full connector info
 	monitors = s.scanConnectorsDRM(cardIndex)
 	if len(monitors) > 0 {
 		return monitors
 	}
 
-	// Fall back to sysfs scanning
 	return s.scanConnectorsSysfs(cardIndex)
 }
 
-// scanConnectorsDRM uses DRM ioctls to get connector information.
 func (s *Scanner) scanConnectorsDRM(cardIndex int) []*domain.Monitor {
 	devPath := flatpak.HostPath(fmt.Sprintf("/dev/dri/card%d", cardIndex))
 	file, err := os.Open(devPath)
@@ -336,7 +302,6 @@ func (s *Scanner) scanConnectorsDRM(cardIndex int) []*domain.Monitor {
 	return monitors
 }
 
-// connectorToMonitor converts a DRM connector to our domain model.
 func (s *Scanner) connectorToMonitor(conn *mode.Connector) *domain.Monitor {
 	connType := domain.ConnectorType(conn.Type)
 
@@ -351,7 +316,6 @@ func (s *Scanner) connectorToMonitor(conn *mode.Connector) *domain.Monitor {
 		EncoderID: conn.EncoderID,
 	}
 
-	// Convert modes
 	for i, m := range conn.Modes {
 		displayMode := domain.DisplayMode{
 			Width:       m.Hdisplay,
@@ -360,7 +324,6 @@ func (s *Scanner) connectorToMonitor(conn *mode.Connector) *domain.Monitor {
 			Name:        fmt.Sprintf("%dx%d@%dHz", m.Hdisplay, m.Vdisplay, m.Vrefresh),
 		}
 
-		// First mode is usually current/preferred
 		if i == 0 && monitor.Status == domain.ConnectionConnected {
 			displayMode.IsCurrent = true
 			displayMode.IsPreferred = true
@@ -373,11 +336,9 @@ func (s *Scanner) connectorToMonitor(conn *mode.Connector) *domain.Monitor {
 	return monitor
 }
 
-// scanConnectorsSysfs falls back to reading connector info from sysfs.
 func (s *Scanner) scanConnectorsSysfs(cardIndex int) []*domain.Monitor {
 	var monitors []*domain.Monitor
 
-	// Find connectors like card0-HDMI-A-1, card0-DP-1
 	pattern := flatpak.HostPath(fmt.Sprintf("/sys/class/drm/card%d-*", cardIndex))
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
@@ -402,7 +363,6 @@ func (s *Scanner) scanConnectorsSysfs(cardIndex int) []*domain.Monitor {
 			TypeIndex: uint32(connIndex),
 		}
 
-		// Read status
 		statusPath := filepath.Join(connPath, "status")
 		if data, err := os.ReadFile(statusPath); err == nil {
 			status := strings.TrimSpace(string(data))
@@ -416,14 +376,12 @@ func (s *Scanner) scanConnectorsSysfs(cardIndex int) []*domain.Monitor {
 			}
 		}
 
-		// Read connector_id
 		idPath := filepath.Join(connPath, "connector_id")
 		if data, err := os.ReadFile(idPath); err == nil {
 			id, _ := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 32)
 			monitor.ID = uint32(id)
 		}
 
-		// Read modes if connected
 		if monitor.Status == domain.ConnectionConnected {
 			modesPath := filepath.Join(connPath, "modes")
 			if data, err := os.ReadFile(modesPath); err == nil {
@@ -443,7 +401,6 @@ func (s *Scanner) scanConnectorsSysfs(cardIndex int) []*domain.Monitor {
 			}
 		}
 
-		// Read DPMS state
 		dpmsPath := filepath.Join(connPath, "dpms")
 		if data, err := os.ReadFile(dpmsPath); err == nil {
 			monitor.DPMS = strings.TrimSpace(string(data))
@@ -455,7 +412,6 @@ func (s *Scanner) scanConnectorsSysfs(cardIndex int) []*domain.Monitor {
 	return monitors
 }
 
-// parseConnectorType converts a connector type string to our enum.
 func (s *Scanner) parseConnectorType(name string) domain.ConnectorType {
 	typeMap := map[string]domain.ConnectorType{
 		"VGA":       domain.ConnectorVGA,
@@ -483,9 +439,7 @@ func (s *Scanner) parseConnectorType(name string) domain.ConnectorType {
 	return domain.ConnectorUnknown
 }
 
-// parseModeLine parses a mode string like "1920x1080" into a DisplayMode.
 func (s *Scanner) parseModeLine(line string) domain.DisplayMode {
-	// Modes from sysfs are just "1920x1080", no refresh rate
 	parts := strings.Split(line, "x")
 	mode := domain.DisplayMode{Name: line}
 
@@ -499,7 +453,6 @@ func (s *Scanner) parseModeLine(line string) domain.DisplayMode {
 	return mode
 }
 
-// GetGPUByPCI finds GPU info for a specific PCI device.
 func (s *Scanner) GetGPUByPCI(pciAddress string) *domain.GPUInfo {
 	gpus, err := s.ScanGPUs()
 	if err != nil {

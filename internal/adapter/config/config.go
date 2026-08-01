@@ -11,30 +11,25 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config holds user-facing settings for the Chassis GUI.
 type Config struct {
 	Debug      bool   `mapstructure:"debug"`
 	ChrootPath string `mapstructure:"chroot_path"`
 	SkipSetup  bool   `mapstructure:"skip_setup"`
 }
 
-// Load reads config from ~/.config/chassis/config.toml, falling back to defaults.
-// Environment variables (CHASSIS_DEBUG, CHASSIS_CHROOT) override file values.
+// Load reads ~/.config/chassis/config.toml; CHASSIS_DEBUG and CHASSIS_CHROOT override.
 func Load() (*Config, error) {
 	v := viper.New()
 	v.SetConfigType("toml")
 
-	// Defaults
 	v.SetDefault("debug", false)
 	v.SetDefault("chroot_path", "")
 	v.SetDefault("skip_setup", false)
 
-	// Env var overrides
 	v.SetEnvPrefix("CHASSIS")
 	v.BindEnv("debug")
 	v.BindEnv("chroot_path", "CHASSIS_CHROOT")
 
-	// Config file location
 	configPath, err := xdg.ConfigFile("chassis/config.toml")
 	if err != nil {
 		slog.Debug("could not resolve config path, using defaults", "error", err)
@@ -42,7 +37,6 @@ func Load() (*Config, error) {
 		v.SetConfigFile(configPath)
 		if err := v.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-				// File exists but couldn't be parsed
 				return nil, fmt.Errorf("reading config: %w", err)
 			}
 		}
@@ -56,7 +50,6 @@ func Load() (*Config, error) {
 	return &cfg, nil
 }
 
-// SaveSkipSetup persists the skip_setup preference to config.toml.
 func SaveSkipSetup(skip bool) {
 	path, err := xdg.ConfigFile("chassis/config.toml")
 	if err != nil {

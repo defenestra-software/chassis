@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-// Scanner reads processor, sensor, and display info from sysfs and /proc.
 type Scanner struct {
 	logger *slog.Logger
 }

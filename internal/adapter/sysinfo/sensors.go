@@ -73,12 +73,10 @@ func (s *Scanner) scanHWMonChip(chipPath, hwmonName string) *domain.DeviceNode {
 		return nil
 	}
 
-	// Build a human-readable name - try exact match, then prefix match
 	displayName := chipName
 	if friendly, ok := hwmonFriendlyNames[chipName]; ok {
 		displayName = friendly
 	} else {
-		// Try prefix matching for names like "r8169_0_700:00"
 		chipLower := strings.ToLower(chipName)
 		for key, friendly := range hwmonFriendlyNames {
 			if strings.HasPrefix(chipLower, strings.ToLower(key)) {
@@ -88,12 +86,10 @@ func (s *Scanner) scanHWMonChip(chipPath, hwmonName string) *domain.DeviceNode {
 		}
 	}
 
-	// Skip battery sensors (handled by battery enrichment)
 	if strings.HasPrefix(chipName, "hidpp_battery") || strings.HasPrefix(chipName, "BAT") {
 		return nil
 	}
 
-	// Try to find associated device for context
 	deviceLink := filepath.Join(chipPath, "device")
 	deviceDesc := ""
 	if resolved, err := filepath.EvalSymlinks(deviceLink); err == nil {
@@ -103,8 +99,6 @@ func (s *Scanner) scanHWMonChip(chipPath, hwmonName string) *domain.DeviceNode {
 		}
 	}
 
-	// For sensors with friendly names that need disambiguation (multiple GPUs/NVMe),
-	// append the device identifier in parentheses
 	if deviceDesc != "" {
 		switch displayName {
 		case "GPU Temperature":
@@ -112,12 +106,10 @@ func (s *Scanner) scanHWMonChip(chipPath, hwmonName string) *domain.DeviceNode {
 		case "NVMe Temperature":
 			displayName = fmt.Sprintf("NVMe Temperature (%s)", deviceDesc)
 		case chipName:
-			// No friendly name found - use chipName with device context
 			displayName = fmt.Sprintf("%s (%s)", chipName, deviceDesc)
 		}
 	}
 
-	// Collect sensor readings
 	var sensors []*domain.SensorInfo
 	sensors = append(sensors, s.readTempSensors(chipPath, chipName)...)
 	sensors = append(sensors, s.readFanSensors(chipPath, chipName)...)
@@ -128,7 +120,6 @@ func (s *Scanner) scanHWMonChip(chipPath, hwmonName string) *domain.DeviceNode {
 		return nil
 	}
 
-	// Build subtitle with current readings summary
 	var subtitleParts []string
 	for _, sensor := range sensors {
 		if sensor.Type == "temperature" {
@@ -139,7 +130,6 @@ func (s *Scanner) scanHWMonChip(chipPath, hwmonName string) *domain.DeviceNode {
 		}
 	}
 	if len(subtitleParts) == 0 {
-		// No temps, show fan or other
 		for _, sensor := range sensors {
 			subtitleParts = append(subtitleParts, fmt.Sprintf("%s: %s", sensor.Label, sensor.FormattedValue()))
 			if len(subtitleParts) >= 2 {
@@ -186,13 +176,11 @@ func (s *Scanner) readTempSensors(chipPath, chipName string) []*domain.SensorInf
 			DeviceName: chipName,
 		}
 
-		// Read label
 		sensor.Label = readFile(filepath.Join(chipPath, fmt.Sprintf("temp%d_label", i)))
 		if sensor.Label == "" {
 			sensor.Label = fmt.Sprintf("Sensor %d", i)
 		}
 
-		// Read thresholds
 		if v := readFile(filepath.Join(chipPath, fmt.Sprintf("temp%d_crit", i))); v != "" {
 			if f, err := strconv.ParseFloat(v, 64); err == nil {
 				sensor.Critical = f / 1000

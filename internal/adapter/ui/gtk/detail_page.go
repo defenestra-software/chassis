@@ -47,7 +47,6 @@ func (g *GtkUI) showDeviceDetailScrollTo(node *domain.DeviceNode, scrollTo strin
 	if scrollTo != "" {
 		if target, ok := scrollTargets[scrollTo]; ok {
 			glib.TimeoutSecondsAdd(0, func() bool {
-				// ScrollTo by finding the widget's Y allocation
 				if w, ok := target.(*adw.PreferencesGroup); ok {
 					alloc := w.Allocation()
 					adj := scroll.VAdjustment()
@@ -76,7 +75,6 @@ func (g *GtkUI) buildDetailContent(node *domain.DeviceNode) (gtk.Widgetter, map[
 
 	scrollTargets := make(map[string]gtk.Widgetter)
 
-	// Title area with icon
 	titleBox := gtk.NewBox(gtk.OrientationHorizontal, 16)
 	titleBox.SetMarginBottom(12)
 
@@ -93,7 +91,6 @@ func (g *GtkUI) buildDetailContent(node *domain.DeviceNode) (gtk.Widgetter, map[
 	titleBox.Append(titleLabel)
 	box.Append(titleBox)
 
-	// === Interface sections - iterate all interfaces on this device ===
 	if len(node.Interfaces) > 0 {
 		seen := map[string]bool{}
 		for _, iface := range node.Interfaces {
@@ -104,7 +101,6 @@ func (g *GtkUI) buildDetailContent(node *domain.DeviceNode) (gtk.Widgetter, map[
 				continue
 			}
 
-			// Skip duplicate section tags (e.g., multiple "general" fallbacks)
 			if seen[iface.ScrollTag] {
 				continue
 			}
@@ -117,16 +113,13 @@ func (g *GtkUI) buildDetailContent(node *domain.DeviceNode) (gtk.Widgetter, map[
 			}
 		}
 	} else {
-		// Fallback for devices without interfaces (shouldn't happen after extraction)
 		box.Append(g.buildGeneralInfoGroup(node))
 	}
 
-	// === IOMMU Group (PCI only) ===
 	if node.IOMMUGroup >= 0 && node.Type == domain.DeviceTypePCI {
 		box.Append(g.buildIOMMUGroupSection(node))
 	}
 
-	// === Device paths - only show paths not already covered by interface sections ===
 	shownPaths := map[string]bool{}
 	for _, iface := range node.Interfaces {
 		for _, p := range iface.DevicePaths {
@@ -158,24 +151,20 @@ func (g *GtkUI) buildDetailContent(node *domain.DeviceNode) (gtk.Widgetter, map[
 		box.Append(pathsGroup)
 	}
 
-	// === Battery (peripherals) ===
 	if node.BatteryInfo != nil {
 		box.Append(g.buildBatteryGroup(node))
 	}
 
-	// === Technical Details (collapsed, PCI/USB only) ===
 	if node.Type == domain.DeviceTypePCI || node.Type == domain.DeviceTypeUSB {
 		box.Append(g.buildTechnicalDetailsGroup(node))
 	}
 
-	// === Hardware Resources (collapsed, PCI only) ===
 	if node.Resources != nil && node.Type == domain.DeviceTypePCI {
 		if resGroup := g.buildResourcesGroup(node.Resources); resGroup != nil {
 			box.Append(resGroup)
 		}
 	}
 
-	// === Actions (PCI/USB, daemon connected, not virtual root hubs) ===
 	if g.driverMgmtEnabled && (node.Type == domain.DeviceTypePCI || node.Type == domain.DeviceTypeUSB) &&
 		!strings.HasPrefix(node.ID, "usb:usb") {
 		box.Append(g.buildActionButtons(node))
@@ -188,11 +177,9 @@ func (g *GtkUI) buildDetailContent(node *domain.DeviceNode) (gtk.Widgetter, map[
 	return clamp, scrollTargets
 }
 
-// buildInterfaceSection builds the appropriate detail section for a device interface.
 func (g *GtkUI) buildInterfaceSection(node *domain.DeviceNode, iface *domain.DeviceInterface) gtk.Widgetter {
 	switch {
 	case iface.ProcessorInfo != nil:
-		// Processor gets two sections - info + cache
 		box := gtk.NewBox(gtk.OrientationVertical, 18)
 		box.Append(g.buildProcessorInfoGroup(iface.ProcessorInfo))
 		if cacheGroup := g.buildProcessorCacheGroup(iface.ProcessorInfo); cacheGroup != nil {
@@ -203,7 +190,6 @@ func (g *GtkUI) buildInterfaceSection(node *domain.DeviceNode, iface *domain.Dev
 	case iface.GPUInfo != nil:
 		gpuBox := gtk.NewBox(gtk.OrientationVertical, 18)
 		gpuBox.Append(g.buildGPUInfoGroup(node))
-		// Add Display Outputs section with cross-links to displays
 		if len(node.GPUInfo.Monitors) > 0 {
 			gpuBox.Append(g.buildMonitorsGroup(node.GPUInfo))
 		}
@@ -240,7 +226,6 @@ func (g *GtkUI) buildInterfaceSection(node *domain.DeviceNode, iface *domain.Dev
 		return g.buildMemoryModuleGroup(iface.MemoryModule)
 
 	case len(iface.SensorData) > 0:
-		// Build a sensor readings group using the interface's sensor data
 		sensorNode := &domain.DeviceNode{
 			SensorReadings: iface.SensorData,
 			Path:           node.Path,
@@ -248,7 +233,6 @@ func (g *GtkUI) buildInterfaceSection(node *domain.DeviceNode, iface *domain.Dev
 		return g.buildSensorReadingsGroupTitle(sensorNode, iface.SectionTitle)
 
 	case iface.Type == domain.InterfaceDebug:
-		// Debug device section
 		group := adw.NewPreferencesGroup()
 		group.SetTitle(iface.SectionTitle)
 		addDetailRow(group, "Type", "Vendor-specific debug interface")
@@ -258,7 +242,6 @@ func (g *GtkUI) buildInterfaceSection(node *domain.DeviceNode, iface *domain.Dev
 		return group
 
 	case len(iface.DevicePaths) > 0 && iface.Type == domain.InterfaceSerial:
-		// Serial device section - show ports and symlinks
 		group := adw.NewPreferencesGroup()
 		group.SetTitle(iface.SectionTitle)
 		for _, p := range iface.DevicePaths {
@@ -273,7 +256,6 @@ func (g *GtkUI) buildInterfaceSection(node *domain.DeviceNode, iface *domain.Dev
 		return group
 
 	default:
-		// Fallback: use the section title or general info
 		if iface.Type == domain.InterfaceUSB && strings.HasPrefix(node.ID, "usb:usb") {
 			group := adw.NewPreferencesGroup()
 			group.SetTitle("USB Host Controller")
@@ -288,8 +270,6 @@ func (g *GtkUI) buildInterfaceSection(node *domain.DeviceNode, iface *domain.Dev
 	}
 }
 
-// buildMonitorsSection builds the GPU display outputs with cross-links.
-// This is called as a separate section, not from an interface.
 func (g *GtkUI) buildMonitorsSection(node *domain.DeviceNode) gtk.Widgetter {
 	if node.GPUInfo == nil || len(node.GPUInfo.Monitors) == 0 {
 		return nil
@@ -396,10 +376,8 @@ func (g *GtkUI) buildDisplayInfoGroup(info *domain.DisplayInfo) *adw.Preferences
 		connStr = fmt.Sprintf("%s-%s", connStr, info.ConnectorIndex)
 	}
 	addDetailRow(group, "Connection", connStr)
-	// GPU link - clickable to navigate to the GPU detail page
 	gpuRow := adw.NewActionRow()
 	gpuRow.SetTitle("GPU")
-	// Show GPU name instead of "card1"
 	gpuName := info.GPUCard
 	cardIndex := strings.TrimPrefix(info.GPUCard, "card")
 	g.mu.RLock()
@@ -414,7 +392,6 @@ func (g *GtkUI) buildDisplayInfoGroup(info *domain.DisplayInfo) *adw.Preferences
 	gpuRow.SetSubtitleSelectable(true)
 	gpuRow.SetActivatable(true)
 	gpuRow.ConnectActivated(func() {
-		// Find the GPU device by matching the DRM card index
 		g.navigateToGPUByCard(cardIndex)
 	})
 	chevron := gtk.NewImageFromIconName("go-next-symbolic")
@@ -446,7 +423,6 @@ func (g *GtkUI) buildDisplayModesGroup(info *domain.DisplayInfo) *adw.Preference
 	expander.SetTitle("Supported Resolutions")
 	expander.SetSubtitle(fmt.Sprintf("%d resolutions", info.ModeCount))
 
-	// Deduplicate modes (sysfs lists duplicates for different timings)
 	seen := map[string]bool{}
 	for _, mode := range info.Modes {
 		if seen[mode] {
@@ -642,7 +618,6 @@ func (g *GtkUI) buildSensorReadingsGroupTitle(node *domain.DeviceNode, title str
 		}
 	}
 
-	// Group readings by type
 	for _, s := range node.SensorReadings {
 		if s.Type == "temperature" {
 			addSensorRow(s)
@@ -842,7 +817,6 @@ func nmSecurityString(rsnFlags, wpaFlags uint32) string {
 	}
 }
 
-// readSysfsForUI reads a hwmon value and returns it as a float-compatible string.
 func readSysfsForUI(path string) string {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -896,7 +870,6 @@ func (g *GtkUI) buildIOMMUGroupSection(node *domain.DeviceNode) *adw.Preferences
 	group := adw.NewPreferencesGroup()
 	group.SetTitle(fmt.Sprintf("IOMMU Group %d", node.IOMMUGroup))
 
-	// List other devices in same group
 	g.mu.RLock()
 	members := g.iommuGroups[node.IOMMUGroup]
 	g.mu.RUnlock()
@@ -930,12 +903,10 @@ func (g *GtkUI) buildGPUInfoGroup(node *domain.DeviceNode) *adw.PreferencesGroup
 	group := adw.NewPreferencesGroup()
 	group.SetTitle("Graphics")
 
-	// Chip vendor (AMD, NVIDIA, Intel)
 	if node.Vendor != "" {
 		addDetailRow(group, "Vendor", node.Vendor)
 	}
 
-	// Board manufacturer (ASRock, MSI, Sapphire, etc.)
 	if gpuInfo.SubsystemVendor != "" {
 		mfr := lookupSubsystemVendor(gpuInfo.SubsystemVendor)
 		if mfr != "" && mfr != node.Vendor {
@@ -992,7 +963,6 @@ func (g *GtkUI) buildGPUInfoGroup(node *domain.DeviceNode) *adw.PreferencesGroup
 		addDetailRow(group, "GPU Serial", gpuInfo.UniqueID)
 	}
 
-	// PCIe link info
 	if gpuInfo.PCIeLinkSpeed != "" {
 		linkStr := gpuInfo.PCIeLinkSpeed
 		if gpuInfo.PCIeLinkWidth != "" {
@@ -1007,14 +977,12 @@ func (g *GtkUI) buildGPUInfoGroup(node *domain.DeviceNode) *adw.PreferencesGroup
 		addDetailRow(group, "PCIe Link", linkStr)
 	}
 
-	// VBIOS version + save button
 	if gpuInfo.VBIOSVersion != "" {
 		vbiosRow := adw.NewActionRow()
 		vbiosRow.SetTitle("VBIOS")
 		vbiosRow.SetSubtitle(gpuInfo.VBIOSVersion)
 		vbiosRow.SetSubtitleSelectable(true)
 
-		// Add save button if daemon is connected and ROM exists
 		if g.driverMgmtEnabled && node.Type == domain.DeviceTypePCI {
 			pciAddr := strings.TrimPrefix(node.ID, "pci:")
 			romPath := fmt.Sprintf("/sys/bus/pci/devices/%s/rom", pciAddr)
@@ -1065,7 +1033,6 @@ func (g *GtkUI) buildMonitorsGroup(gpuInfo *domain.GPUInfo) *adw.PreferencesGrou
 		row.AddPrefix(icon)
 
 		if monitor.Status == domain.ConnectionConnected {
-			// Clickable row to navigate to the display detail page
 			monName := monitor.FormattedName()
 			cardIdx := gpuInfo.CardIndex
 			row.SetActivatable(true)
@@ -1099,7 +1066,6 @@ func (g *GtkUI) buildStorageInfoGroup(info *domain.StorageInfo) *adw.Preferences
 	if info.SizeBytes > 0 {
 		addDetailRow(group, "Capacity", info.SizeString())
 	}
-	// Temperature is shown in the Sensors section (sensor interface), not here.
 	if info.Transport != "" {
 		addDetailRow(group, "Interface", strings.ToUpper(info.Transport))
 	}
@@ -1206,7 +1172,6 @@ func (g *GtkUI) buildBatteryGroup(node *domain.DeviceNode) *adw.PreferencesGroup
 
 	// Live UPower polling for UPS devices
 	if node.Class == domain.DeviceClassPower && node.Type == domain.DeviceTypeUSB {
-		// Extract USB address from node ID (e.g. "usb:5-2.4" -> "5-2.4")
 		usbAddr := strings.TrimPrefix(node.ID, "usb:")
 		upowerPath := findUPowerDevice(usbAddr)
 		if upowerPath != "" {
@@ -1236,8 +1201,7 @@ func (g *GtkUI) buildBatteryGroup(node *domain.DeviceNode) *adw.PreferencesGroup
 	return group
 }
 
-// findUPowerDevice finds the UPower D-Bus object path for a USB device
-// by matching the USB address (e.g. "5-2.4") in the native sysfs path.
+// findUPowerDevice matches a USB address (e.g. "5-2.4") in UPower native paths.
 func findUPowerDevice(usbAddr string) dbus.ObjectPath {
 	conn, err := dbus.SystemBus()
 	if err != nil {
@@ -1349,7 +1313,6 @@ func (g *GtkUI) buildTechnicalDetailsGroup(node *domain.DeviceNode) *adw.Prefere
 }
 
 func (g *GtkUI) buildResourcesGroup(res *domain.DeviceResources) *adw.PreferencesGroup {
-	// Check if there's anything to show
 	hasContent := res.IRQ >= 0 || len(res.Memory) > 0 || len(res.IOPorts) > 0
 	if !hasContent {
 		return nil

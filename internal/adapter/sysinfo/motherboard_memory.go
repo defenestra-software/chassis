@@ -8,7 +8,6 @@ import (
 	"defenestra.io/chassis/internal/core/domain"
 )
 
-// ScanMotherboard returns a device node for the motherboard with BIOS info.
 func (s *Scanner) ScanMotherboard() *domain.DeviceNode {
 	bb, err := ghw.Baseboard()
 	if err != nil {
@@ -32,7 +31,6 @@ func (s *Scanner) ScanMotherboard() *domain.DeviceNode {
 		SerialNumber: bb.SerialNumber,
 	}
 
-	// Read BIOS info
 	bi, err := ghw.BIOS()
 	if err == nil {
 		mbInfo.BIOSVendor = bi.Vendor
@@ -40,7 +38,6 @@ func (s *Scanner) ScanMotherboard() *domain.DeviceNode {
 		mbInfo.BIOSDate = bi.Date
 	}
 
-	// Read total memory - use TotalPhysicalBytes for installed capacity
 	mem, err := ghw.Memory()
 	if err == nil {
 		mbInfo.TotalMemoryBytes = mem.TotalPhysicalBytes
@@ -71,7 +68,6 @@ func (s *Scanner) ScanMotherboard() *domain.DeviceNode {
 	return node
 }
 
-// ScanMemory returns device nodes for each installed memory module.
 func (s *Scanner) ScanMemory() []*domain.DeviceNode {
 	mem, err := ghw.Memory()
 	if err != nil {

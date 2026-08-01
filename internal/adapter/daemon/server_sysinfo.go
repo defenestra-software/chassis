@@ -15,13 +15,12 @@ import (
 func (s *Server) ReadSystemInfo() (string, *dbus.Error) {
 	s.logger.Info("system info read requested")
 
-	// Read board serial (root-only file)
 	serial := ""
 	if data, err := os.ReadFile(flatpak.HostPath("/sys/class/dmi/id/board_serial")); err == nil {
 		serial = strings.TrimSpace(string(data))
 	}
 
-	// Read memory modules via dmidecode, fall back to sysfs DMI tables
+	// Prefer dmidecode; fall back to raw DMI Type 17 tables.
 	memJSON := "[]"
 	output, err := runHostCommandOutput("dmidecode", "-t", "memory", "-q")
 	if err == nil {
@@ -101,7 +100,6 @@ func parseDMIMemory(output string) string {
 				current.Speed = val
 			}
 		case "Manufacturer":
-			// Only use if JEDEC lookup didn't already set it
 			if current.Vendor == "" {
 				current.Vendor = val
 			}
@@ -114,7 +112,6 @@ func parseDMIMemory(output string) string {
 		}
 	}
 
-	// Don't forget last module
 	if current != nil && current.Size != "" && current.Size != "No Module Installed" {
 		modules = append(modules, *current)
 	}
@@ -123,7 +120,6 @@ func parseDMIMemory(output string) string {
 		return "[]"
 	}
 
-	// Build JSON manually to avoid importing encoding/json
 	result := "["
 	for i, m := range modules {
 		if i > 0 {
@@ -154,13 +150,11 @@ func (s *Server) DumpVBIOS(sender dbus.Sender, pciAddress string) ([]byte, *dbus
 		return nil, dbus.MakeFailedError(fmt.Errorf("ROM file not found for %s", pciAddress))
 	}
 
-	// Enable ROM reading
 	if err := os.WriteFile(romPath, []byte("1"), 0644); err != nil {
 		return nil, dbus.MakeFailedError(fmt.Errorf("failed to enable ROM: %w", err))
 	}
 	defer os.WriteFile(romPath, []byte("0"), 0644)
 
-	// Read ROM data
 	data, err := os.ReadFile(romPath)
 	if err != nil {
 		return nil, dbus.MakeFailedError(fmt.Errorf("failed to read ROM: %w", err))
@@ -185,8 +179,7 @@ func (s *Server) ReadSMART(blockDevice string) (string, *dbus.Error) {
 
 	output, err := runHostCommandOutput("smartctl", "-a", devPath, "-j")
 	if err != nil {
-		// smartctl returns non-zero for various reasons (e.g., exit code 4 = SMART check failed)
-		// but still outputs valid JSON. Only fail if output is empty.
+		// smartctl often exits non-zero for SMART failures while still printing JSON.
 		if len(output) == 0 {
 			s.logger.Error("smartctl failed", "device", blockDevice, "error", err)
 			return "", dbus.MakeFailedError(fmt.Errorf("smartctl: %w", err))
@@ -198,7 +191,6 @@ func (s *Server) ReadSMART(blockDevice string) (string, *dbus.Error) {
 }
 
 func lookupJEDEC(id string) string {
-	// Parse "Bank N, Hex 0xHH"
 	id = strings.TrimSpace(id)
 	var bank int
 	var hex string
@@ -216,7 +208,6 @@ func lookupJEDEC(id string) string {
 
 // Source: JEDEC JEP106
 var jedecVendors = map[string]string{
-	// Bank 1
 	"1:01": "AMD",
 	"1:04": "Fujitsu",
 	"1:07": "Hitachi",
@@ -234,29 +225,24 @@ var jedecVendors = map[string]string{
 	"1:C1": "Infineon",
 	"1:CE": "Samsung",
 
-	// Bank 2
 	"2:9E": "Corsair",
 	"2:43": "Ramaxel",
 	"2:51": "Qimonda",
 	"2:CB": "A-DATA",
 	"2:F1": "Innodisk",
 
-	// Bank 3
 	"3:0B": "Nanya",
 	"3:25": "Kingmax",
 	"3:94": "Mushkin",
 	"3:FE": "Elpida",
 
-	// Bank 4
 	"4:43": "Ramaxel",
 	"4:F1": "Smart Modular",
 
-	// Bank 5
 	"5:01": "PQI",
 	"5:51": "Qimonda",
 	"5:EF": "TeamGroup",
 
-	// Bank 6
 	"6:02": "Patriot",
 	"6:34": "Crucial",
 	"6:51": "Apacer",
@@ -264,22 +250,19 @@ var jedecVendors = map[string]string{
 	"6:CD": "OCZ",
 	"6:F1": "G.Skill",
 
-	// Bank 7
 	"7:02": "GoodRAM",
 	"7:43": "Super Talent",
 	"7:AD": "XPG",
 	"7:EF": "Longsys",
 	"7:F1": "V-Color",
 
-	// Bank 8
 	"8:01": "Lexar",
 	"8:04": "Juhor",
 	"8:51": "OLOy",
 	"8:AD": "Goldkey",
 }
 
-// Parses raw SMBIOS Type 17 (Memory Device) entries from the DMI table
-// as a fallback when dmidecode is not available.
+// readMemoryFromSysfs parses SMBIOS Type 17 entries when dmidecode is missing.
 func (s *Server) readMemoryFromSysfs() string {
 	dmiPath := flatpak.HostPath("/sys/firmware/dmi/tables/DMI")
 	data, err := os.ReadFile(dmiPath)
@@ -308,7 +291,6 @@ func (s *Server) readMemoryFromSysfs() string {
 			break
 		}
 
-		// Find the strings section start (immediately after formatted area)
 		strStart := offset + length
 
 		if smbType == 17 && length >= 0x1B {
@@ -329,7 +311,6 @@ func (s *Server) readMemoryFromSysfs() string {
 					sizeStr = fmt.Sprintf("%d GB", sizeMB/1024)
 				}
 
-				// Memory type at offset 0x12
 				typeStr := ""
 				switch data[offset+0x12] {
 				case 20:
@@ -354,7 +335,6 @@ func (s *Server) readMemoryFromSysfs() string {
 				if speedMHz > 0 && speedMHz != 0xFFFF {
 					speedStr = fmt.Sprintf("%d MT/s", speedMHz)
 				}
-				// Prefer configured speed at 0x20 if available
 				if length >= 0x22 {
 					cfgSpeed := uint16(data[offset+0x20]) | uint16(data[offset+0x21])<<8
 					if cfgSpeed > 0 && cfgSpeed != 0xFFFF {
@@ -389,7 +369,6 @@ func (s *Server) readMemoryFromSysfs() string {
 			}
 		}
 
-		// Skip past formatted area to strings section, then past double-null terminator
 		strOffset := offset + length
 		for strOffset+1 < len(data) {
 			if data[strOffset] == 0 && data[strOffset+1] == 0 {
