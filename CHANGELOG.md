@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.6
+- Added support for Logitech F310
+- Added support for Stadia controllers USB and BLE interfaces
+
 ## v0.1.5
 - Fixed D-Bus activation issue that resulted in the daemon not responding on first launch 
 
