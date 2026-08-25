@@ -24,7 +24,6 @@ func (s *Scanner) EnrichCameraInfo(root *domain.DeviceNode) {
 		return
 	}
 
-	// Collect all V4L devices grouped by USB address
 	type v4lInfo struct {
 		devPaths []string
 	}
@@ -50,21 +49,17 @@ func (s *Scanner) EnrichCameraInfo(root *domain.DeviceNode) {
 		}
 	}
 
-	// Collect by-id symlinks
 	byIDPath := flatpak.HostPath("/dev/v4l/by-id")
 	byIDEntries, _ := os.ReadDir(byIDPath)
 
-	// Collect by-path symlinks
 	byPathDir := flatpak.HostPath("/dev/v4l/by-path")
 	byPathEntries, _ := os.ReadDir(byPathDir)
 
 	for usbAddr, info := range byUSB {
 		var allPaths []string
 
-		// Add /dev/videoN paths
 		allPaths = append(allPaths, info.devPaths...)
 
-		// Find matching by-id links
 		for _, e := range byIDEntries {
 			target, err := os.Readlink(filepath.Join(byIDPath, e.Name()))
 			if err != nil {
@@ -77,7 +72,6 @@ func (s *Scanner) EnrichCameraInfo(root *domain.DeviceNode) {
 			}
 		}
 
-		// Find matching by-path links
 		for _, e := range byPathEntries {
 			target, err := os.Readlink(filepath.Join(byPathDir, e.Name()))
 			if err != nil {
@@ -109,8 +103,7 @@ func (s *Scanner) attachDevicePaths(node *domain.DeviceNode, targetID string, pa
 	return false
 }
 
-// ScanBluetoothHID finds HID devices connected via Bluetooth (bus type 0005).
-// These are wireless gamepads, keyboards, mice connected via BLE.
+// ScanBluetoothHID finds BLE HID devices (bus type 0005): gamepads, keyboards, mice.
 func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 	var nodes []*domain.DeviceNode
 
@@ -124,7 +117,6 @@ func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 
 	for _, entry := range entries {
 		name := entry.Name()
-		// Bluetooth HID devices have bus type 0005
 		if !strings.HasPrefix(name, "0005:") {
 			continue
 		}
@@ -141,7 +133,6 @@ func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 		pid := strings.ToLower(pidParts[0])
 		vidpid := vid + ":" + pid
 
-		// Skip duplicates (multiple HID collections for same device)
 		if seen[vidpid] {
 			continue
 		}
@@ -149,7 +140,6 @@ func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 
 		devPath := filepath.Join(hidPath, name)
 
-		// Read HID name from uevent
 		hidName := ""
 		if data, err := os.ReadFile(filepath.Join(devPath, "uevent")); err == nil {
 			for _, line := range strings.Split(string(data), "\n") {
@@ -168,14 +158,12 @@ func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 			driver = filepath.Base(driverLink)
 		}
 
-		// Classify - most BT HID devices are input (gamepads, keyboards, mice)
 		class := domain.DeviceClassInput
 		nameLower := strings.ToLower(hidName)
 		if strings.Contains(nameLower, "audio") || strings.Contains(nameLower, "headset") || strings.Contains(nameLower, "speaker") {
 			class = domain.DeviceClassAudio
 		}
 
-		// Try to enrich from BlueZ - get friendly name, vendor, battery, connection info
 		vendor := ""
 		var batteryInfo *domain.BatteryInfo
 		btConnected := false
@@ -193,7 +181,6 @@ func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 			}
 		}
 
-		// Look up vendor from VID
 		if vendor == "" {
 			switch vid {
 			case "18d1":
@@ -209,7 +196,6 @@ func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 			}
 		}
 
-		// Build subtitle for list view
 		listSubtitle := "Bluetooth"
 		if btConnected {
 			listSubtitle = "Bluetooth · Connected"
@@ -241,10 +227,8 @@ func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 	return nodes
 }
 
-// EnrichSerialPorts attaches /dev/ttyACM* and /dev/ttyUSB* paths to USB devices,
-// and creates a serial interface classification for devices that expose serial ports.
+// EnrichSerialPorts attaches /dev/ttyACM* and /dev/ttyUSB* paths to USB devices.
 func (s *Scanner) EnrichSerialPorts(root *domain.DeviceNode) {
-	// Scan ttyACM (CDC-ACM) and ttyUSB devices
 	for _, pattern := range []string{"/sys/class/tty/ttyACM*", "/sys/class/tty/ttyUSB*"} {
 		matches, err := filepath.Glob(flatpak.HostPath(pattern))
 		if err != nil {
@@ -254,13 +238,11 @@ func (s *Scanner) EnrichSerialPorts(root *domain.DeviceNode) {
 		for _, ttyPath := range matches {
 			ttyName := filepath.Base(ttyPath)
 
-			// Resolve to find USB parent
 			resolved, err := filepath.EvalSymlinks(filepath.Join(ttyPath, "device"))
 			if err != nil {
 				continue
 			}
 
-			// Walk up to find USB address
 			parts := strings.Split(resolved, "/")
 			usbPattern := regexp.MustCompile(`^\d+-[\d.]+$`)
 			usbAddr := ""
@@ -274,11 +256,9 @@ func (s *Scanner) EnrichSerialPorts(root *domain.DeviceNode) {
 				continue
 			}
 
-			// Collect all paths for this serial port
 			var devPaths []string
 			devPaths = append(devPaths, "/dev/"+ttyName)
 
-			// Check by-id
 			byIDPath := flatpak.HostPath("/dev/serial/by-id")
 			if idEntries, err := os.ReadDir(byIDPath); err == nil {
 				for _, e := range idEntries {
@@ -292,7 +272,6 @@ func (s *Scanner) EnrichSerialPorts(root *domain.DeviceNode) {
 				}
 			}
 
-			// Check by-path
 			byPathDir := flatpak.HostPath("/dev/serial/by-path")
 			if pathEntries, err := os.ReadDir(byPathDir); err == nil {
 				for _, e := range pathEntries {
@@ -306,7 +285,6 @@ func (s *Scanner) EnrichSerialPorts(root *domain.DeviceNode) {
 				}
 			}
 
-			// Attach to the USB device
 			targetID := "usb:" + usbAddr
 			s.attachSerialPaths(root, targetID, devPaths)
 		}
@@ -315,7 +293,6 @@ func (s *Scanner) EnrichSerialPorts(root *domain.DeviceNode) {
 
 func (s *Scanner) attachSerialPaths(node *domain.DeviceNode, targetID string, paths []string) bool {
 	if node.ID == targetID {
-		// Add to device paths (merge, don't replace)
 		node.DevicePaths = append(node.DevicePaths, paths...)
 		s.logger.Debug("attached serial paths", "id", node.ID, "paths", len(paths))
 		return true
@@ -328,9 +305,7 @@ func (s *Scanner) attachSerialPaths(node *domain.DeviceNode, targetID string, pa
 	return false
 }
 
-// EnrichUSBStorage scans /sys/block for USB-backed block devices and attaches
-// StorageInfo to the corresponding USB device nodes. This handles composite
-// USB devices like the J-Link which expose both serial and mass storage.
+// EnrichUSBStorage attaches StorageInfo for USB mass storage (composite devices too).
 func (s *Scanner) EnrichUSBStorage(root *domain.DeviceNode) {
 	blockPath := flatpak.HostPath("/sys/block")
 	entries, err := os.ReadDir(blockPath)
@@ -341,20 +316,17 @@ func (s *Scanner) EnrichUSBStorage(root *domain.DeviceNode) {
 	usbAddrPattern := regexp.MustCompile(`\b(\d+-[\d.]+)\b`)
 
 	for _, entry := range entries {
-		// Only check sd* devices (USB mass storage appears as SCSI)
 		if !strings.HasPrefix(entry.Name(), "sd") {
 			continue
 		}
 
 		devPath := filepath.Join(blockPath, entry.Name())
 
-		// Resolve the device symlink to check if it's USB-backed
 		resolved, err := filepath.EvalSymlinks(filepath.Join(devPath, "device"))
 		if err != nil {
 			continue
 		}
 
-		// Look for a USB address in the resolved path
 		matches := usbAddrPattern.FindAllString(resolved, -1)
 		if len(matches) == 0 {
 			continue
@@ -366,7 +338,6 @@ func (s *Scanner) EnrichUSBStorage(root *domain.DeviceNode) {
 			continue
 		}
 
-		// Find the USB device address (last match before the SCSI host)
 		usbAddr := ""
 		for _, m := range matches {
 			usbAddr = m
@@ -377,7 +348,6 @@ func (s *Scanner) EnrichUSBStorage(root *domain.DeviceNode) {
 
 		targetID := "usb:" + usbAddr
 
-		// Read basic storage info from sysfs
 		deviceDir := filepath.Join(devPath, "device")
 		model := readFile(filepath.Join(deviceDir, "model"))
 		if model == "" {
@@ -398,7 +368,6 @@ func (s *Scanner) EnrichUSBStorage(root *domain.DeviceNode) {
 			SizeBytes:   sizeBytes,
 		}
 
-		// Attach to the USB device node
 		s.attachStorageInfo(root, targetID, info)
 	}
 }
@@ -406,7 +375,6 @@ func (s *Scanner) EnrichUSBStorage(root *domain.DeviceNode) {
 func (s *Scanner) attachStorageInfo(node *domain.DeviceNode, targetID string, info *domain.StorageInfo) bool {
 	if node.ID == targetID {
 		node.StorageInfo = info
-		// Also add /dev/sdX to device paths
 		devPath := "/dev/" + info.BlockDevice
 		node.DevicePaths = append(node.DevicePaths, devPath)
 		s.logger.Debug("attached USB storage", "id", node.ID, "model", info.Model, "block", info.BlockDevice)
@@ -441,28 +409,23 @@ func (s *Scanner) EnrichNetworkInfo(root *domain.DeviceNode) {
 			IsVirtual:     nic.IsVirtual,
 		}
 
-		// Read extra info from sysfs
 		netPath := flatpak.HostPath(filepath.Join("/sys/class/net", nic.Name))
 		info.State = readFile(filepath.Join(netPath, "operstate"))
 		info.MTU = readFile(filepath.Join(netPath, "mtu"))
 
-		// Check if wireless
 		if _, err := os.Stat(filepath.Join(netPath, "wireless")); err == nil {
 			info.IsWireless = true
 			s.enrichWirelessNM(nic.Name, info)
 		}
 
-		// Try to match to a PCI device
 		if nic.PCIAddress != nil && *nic.PCIAddress != "" {
 			targetID := "pci:" + *nic.PCIAddress
 			s.attachNetworkInfo(root, targetID, info)
 			continue
 		}
 
-		// Try to match via sysfs device link for USB devices
 		deviceLink := filepath.Join(netPath, "device")
 		if resolved, err := filepath.EvalSymlinks(deviceLink); err == nil {
-			// Walk up to find USB address
 			parts := strings.Split(resolved, "/")
 			usbPattern := regexp.MustCompile(`^\d+-[\d.]+$`)
 			for i := len(parts) - 1; i >= 0; i-- {
@@ -475,13 +438,11 @@ func (s *Scanner) EnrichNetworkInfo(root *domain.DeviceNode) {
 		}
 	}
 
-	// Also check for Bluetooth
 	btPath := flatpak.HostPath("/sys/class/bluetooth")
 	btEntries, err := os.ReadDir(btPath)
 	if err == nil {
 		for _, entry := range btEntries {
 			hciName := entry.Name()
-			// Skip non-hci entries (like "hci0:16" rfkill sub-entries)
 			if strings.Contains(hciName, ":") {
 				continue
 			}
@@ -489,7 +450,6 @@ func (s *Scanner) EnrichNetworkInfo(root *domain.DeviceNode) {
 			hciPath := filepath.Join(btPath, hciName)
 			btAddr := readFile(filepath.Join(hciPath, "address"))
 
-			// Get the actual BT driver (btusb, btrtl, etc.)
 			btDriver := ""
 			if driverLink, err := os.Readlink(filepath.Join(hciPath, "device", "driver")); err == nil {
 				btDriver = filepath.Base(driverLink)
@@ -501,10 +461,8 @@ func (s *Scanner) EnrichNetworkInfo(root *domain.DeviceNode) {
 				IsBluetooth:   true,
 			}
 
-			// Query BlueZ D-Bus directly with the hci name
 			s.enrichBlueZDirect(hciName, info)
 
-			// Find parent USB device and update its driver
 			if resolved, err := filepath.EvalSymlinks(filepath.Join(hciPath, "device")); err == nil {
 				parts := strings.Split(resolved, "/")
 				usbPattern := regexp.MustCompile(`^\d+-[\d.]+$`)
@@ -512,7 +470,6 @@ func (s *Scanner) EnrichNetworkInfo(root *domain.DeviceNode) {
 					if usbPattern.MatchString(parts[i]) {
 						targetID := "usb:" + parts[i]
 						if s.attachNetworkInfo(root, targetID, info) && btDriver != "" {
-							// Override the generic "usb" driver with the actual BT driver
 							s.setDeviceDriver(root, targetID, btDriver)
 						}
 						break
@@ -537,7 +494,6 @@ func (s *Scanner) findBlueZDevice(vid, pid string) *blueZDeviceInfo {
 		return nil
 	}
 
-	// Use GetManagedObjects to find all devices
 	obj := conn.Object("org.bluez", "/")
 	var result map[dbus.ObjectPath]map[string]map[string]dbus.Variant
 	err = obj.Call("org.freedesktop.DBus.ObjectManager.GetManagedObjects", 0).Store(&result)
@@ -553,7 +509,6 @@ func (s *Scanner) findBlueZDevice(vid, pid string) *blueZDeviceInfo {
 			continue
 		}
 
-		// Check Modalias
 		if modalias, ok := dev["Modalias"]; ok {
 			if m, ok := modalias.Value().(string); ok {
 				if strings.HasPrefix(strings.ToUpper(m), strings.ToUpper(targetModalias)) {
@@ -575,7 +530,6 @@ func (s *Scanner) findBlueZDevice(vid, pid string) *blueZDeviceInfo {
 						}
 					}
 
-					// Check for battery
 					if bat, ok := ifaces["org.bluez.Battery1"]; ok {
 						if pct, ok := bat["Percentage"]; ok {
 							if b, ok := pct.Value().(byte); ok {
@@ -605,21 +559,18 @@ func (s *Scanner) enrichBlueZDirect(hciName string, info *domain.NetworkInfo) {
 	objPath := dbus.ObjectPath("/org/bluez/" + hciName)
 	obj := conn.Object("org.bluez", objPath)
 
-	// Get MAC address
 	if v, err := obj.GetProperty("org.bluez.Adapter1.Address"); err == nil {
 		if addr, ok := v.Value().(string); ok && addr != "" {
 			info.MACAddress = addr
 		}
 	}
 
-	// Get alias (user-set friendly name)
 	if v, err := obj.GetProperty("org.bluez.Adapter1.Alias"); err == nil {
 		if alias, ok := v.Value().(string); ok && alias != "" {
 			info.InterfaceName = fmt.Sprintf("%s (%s)", hciName, alias)
 		}
 	}
 
-	// Get powered state
 	if v, err := obj.GetProperty("org.bluez.Adapter1.Powered"); err == nil {
 		if powered, ok := v.Value().(bool); ok {
 			if powered {
@@ -757,7 +708,6 @@ func (s *Scanner) setDeviceDriver(node *domain.DeviceNode, targetID, driver stri
 func (s *Scanner) attachNetworkInfo(node *domain.DeviceNode, targetID string, info *domain.NetworkInfo) bool {
 	if node.ID == targetID {
 		node.NetworkInfo = info
-		// Reclassify to Networking if it was Other/Unknown
 		if node.Class == domain.DeviceClassOther {
 			if info.IsWireless || info.IsBluetooth {
 				node.Class = domain.DeviceClassWireless
@@ -775,8 +725,7 @@ func (s *Scanner) attachNetworkInfo(node *domain.DeviceNode, targetID string, in
 	return false
 }
 
-// EnrichPeripheralBatteries finds power_supply entries with scope=Device
-// and attaches their battery info to matching USB device nodes in the tree.
+// EnrichPeripheralBatteries attaches power_supply scope=Device batteries to USB nodes.
 func (s *Scanner) EnrichPeripheralBatteries(root *domain.DeviceNode) {
 	s.logger.Debug("enriching peripheral batteries")
 	psPath := flatpak.HostPath("/sys/class/power_supply")
@@ -792,7 +741,6 @@ func (s *Scanner) EnrichPeripheralBatteries(root *domain.DeviceNode) {
 			continue
 		}
 
-		// Build battery info
 		battery := &domain.BatteryInfo{
 			Status:        readFile(filepath.Join(devPath, "status")),
 			CapacityLevel: readFile(filepath.Join(devPath, "capacity_level")),
@@ -801,7 +749,6 @@ func (s *Scanner) EnrichPeripheralBatteries(root *domain.DeviceNode) {
 			Capacity:      -1,
 		}
 
-		// Try numeric capacity first
 		if capStr := readFile(filepath.Join(devPath, "capacity")); capStr != "" {
 			if cap, err := strconv.Atoi(capStr); err == nil {
 				battery.Capacity = cap
@@ -817,7 +764,6 @@ func (s *Scanner) EnrichPeripheralBatteries(root *domain.DeviceNode) {
 			}
 		}
 
-		// Fall back to USB address matching
 		usbAddr := s.findParentUSBAddress(devPath)
 		if usbAddr != "" {
 			targetID := "usb:" + usbAddr
@@ -837,11 +783,10 @@ func (s *Scanner) findHIDDeviceID(psDevPath string) string {
 		return ""
 	}
 
-	// Look for a HID device path segment like "0003:046D:405E.000C"
 	parts := strings.Split(resolved, "/")
 	hidPattern := regexp.MustCompile(`^[0-9A-Fa-f]{4}:([0-9A-Fa-f]{4}):([0-9A-Fa-f]{4})\.[0-9A-Fa-f]+$`)
 
-	// Walk backwards - the last HID segment is the actual peripheral
+	// Last HID path segment is the peripheral (not an intermediate).
 	for i := len(parts) - 1; i >= 0; i-- {
 		match := hidPattern.FindStringSubmatch(parts[i])
 		if match != nil {
@@ -858,15 +803,12 @@ func (s *Scanner) findHIDDeviceID(psDevPath string) string {
 func (s *Scanner) findParentUSBAddress(psDevPath string) string {
 	deviceLink := filepath.Join(psDevPath, "device")
 
-	// EvalSymlinks resolves the full chain to an absolute path
 	resolved, err := filepath.EvalSymlinks(deviceLink)
 	if err != nil {
 		s.logger.Debug("battery: could not resolve device link", "path", deviceLink, "error", err)
 		return ""
 	}
 
-	// Walk up the resolved path looking for a USB device directory
-	// USB device paths contain segments like "3-2" (bus-port)
 	parts := strings.Split(resolved, "/")
 	usbDevPattern := regexp.MustCompile(`^\d+-[\d.]+$`)
 
@@ -899,7 +841,6 @@ func (s *Scanner) attachBattery(node *domain.DeviceNode, targetID string, batter
 // contains the given USB address. This handles cases like Logitech HID++
 // where the battery belongs to a sub-device behind a receiver.
 func (s *Scanner) attachBatteryByPath(node *domain.DeviceNode, usbAddr string, battery *domain.BatteryInfo) bool {
-	// Check if this node's path contains the USB address
 	if node.Path != "" && node.Type == domain.DeviceTypeUSB {
 		if strings.Contains(node.Path, "/"+usbAddr) {
 			node.BatteryInfo = battery
@@ -982,8 +923,6 @@ func (s *Scanner) EnrichUPSBattery(root *domain.DeviceNode) {
 			Status:   status,
 		}
 
-		// Extract USB device address from native path by walking backwards
-		// through path segments (same approach as findParentUSBAddress)
 		usbDevPattern := regexp.MustCompile(`^\d+-[\d.]+$`)
 		parts := strings.Split(native, "/")
 		for i := len(parts) - 1; i >= 0; i-- {

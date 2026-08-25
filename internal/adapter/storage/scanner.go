@@ -17,7 +17,6 @@ import (
 	"defenestra.io/chassis/internal/core/port"
 )
 
-// Scanner reads storage device info and temperatures from sysfs.
 // All data is world-readable - no root privileges needed.
 type Scanner struct {
 	logger   *slog.Logger
@@ -45,11 +44,9 @@ func (s *Scanner) ScanStorage() ([]*domain.StorageInfo, error) {
 
 	var infos []*domain.StorageInfo
 
-	// Scan NVMe controllers
 	nvmeInfos := s.scanNVMe()
 	infos = append(infos, nvmeInfos...)
 
-	// Scan SATA/SCSI block devices
 	sataInfos := s.scanBlockDevices()
 	infos = append(infos, sataInfos...)
 
@@ -57,7 +54,6 @@ func (s *Scanner) ScanStorage() ([]*domain.StorageInfo, error) {
 	return infos, nil
 }
 
-// GetStorageByPCI finds storage info for a specific PCI device address.
 func (s *Scanner) GetStorageByPCI(pciAddress string) *domain.StorageInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -96,12 +92,10 @@ func (s *Scanner) StartMonitor(interval time.Duration, onChange func()) {
 	s.logger.Info("storage temperature monitor started", "interval", interval)
 }
 
-// Stop terminates the temperature monitor.
 func (s *Scanner) Stop() {
 	close(s.stopChan)
 }
 
-// Refresh clears the cache.
 func (s *Scanner) Refresh() {
 	s.mu.Lock()
 	s.cache = nil
@@ -118,7 +112,6 @@ func (s *Scanner) updateTemperatures() bool {
 		if info.Transport != "pcie" {
 			continue
 		}
-		// Re-read hwmon for this NVMe device
 		nvmePath := s.findNVMePathForPCI(info.PCIDevice)
 		if nvmePath == "" {
 			continue
@@ -131,10 +124,6 @@ func (s *Scanner) updateTemperatures() bool {
 	}
 	return changed
 }
-
-// ============================================================
-// NVMe scanning
-// ============================================================
 
 var nvmePattern = regexp.MustCompile(`^nvme\d+$`)
 
@@ -171,19 +160,15 @@ func (s *Scanner) readNVMeController(ctrlPath, name string) *domain.StorageInfo 
 		Transport: readSysfsFile(filepath.Join(ctrlPath, "transport")),
 	}
 
-	// Get PCI address from the 'address' file or symlink resolution
 	info.PCIDevice = readSysfsFile(filepath.Join(ctrlPath, "address"))
 	if info.PCIDevice == "" {
-		// Fall back to resolving the symlink
 		info.PCIDevice = s.resolvePCIAddress(ctrlPath)
 	}
 
-	// Find the block device (e.g., nvme0n1)
 	nsEntries, _ := os.ReadDir(ctrlPath)
 	for _, ns := range nsEntries {
 		if strings.HasPrefix(ns.Name(), name+"n") {
 			info.BlockDevice = ns.Name()
-			// Read capacity from size file (in 512-byte sectors)
 			sizeStr := readSysfsFile(filepath.Join(ctrlPath, ns.Name(), "size"))
 			if sectors, err := strconv.ParseUint(sizeStr, 10, 64); err == nil {
 				info.SizeBytes = sectors * 512
@@ -192,7 +177,6 @@ func (s *Scanner) readNVMeController(ctrlPath, name string) *domain.StorageInfo 
 		}
 	}
 
-	// Read temperature from hwmon
 	info.Temperature = s.readHWMonTemp(ctrlPath)
 	info.TempCritical = s.readHWMonValue(ctrlPath, "temp1_crit")
 	info.TempMax = s.readHWMonValue(ctrlPath, "temp1_max")
@@ -212,7 +196,6 @@ func (s *Scanner) readHWMonTemp(ctrlPath string) float64 {
 }
 
 func (s *Scanner) readHWMonValue(ctrlPath, filename string) float64 {
-	// hwmon directories are named hwmon0, hwmon1, etc.
 	entries, err := os.ReadDir(ctrlPath)
 	if err != nil {
 		return 0
@@ -269,10 +252,6 @@ func (s *Scanner) resolvePCIAddress(ctrlPath string) string {
 	return ""
 }
 
-// ============================================================
-// SATA/SCSI block device scanning
-// ============================================================
-
 var blockDevPattern = regexp.MustCompile(`^sd[a-z]+$`)
 
 func (s *Scanner) scanBlockDevices() []*domain.StorageInfo {
@@ -310,21 +289,17 @@ func (s *Scanner) readBlockDevice(devPath, name string) *domain.StorageInfo {
 		Transport:   "sata",
 	}
 
-	// Skip if no model info (not a real disk)
 	if info.Model == "" {
 		return nil
 	}
 
-	// Read capacity
 	sizeStr := readSysfsFile(filepath.Join(devPath, "size"))
 	if sectors, err := strconv.ParseUint(sizeStr, 10, 64); err == nil {
 		info.SizeBytes = sectors * 512
 	}
 
-	// Resolve PCI address
 	info.PCIDevice = s.resolvePCIAddress(devPath)
 
-	// Read temperature from hwmon if available
 	info.Temperature = s.readBlockDeviceTemp(devPath)
 
 	s.logger.Debug("scanned block device",
@@ -337,7 +312,6 @@ func (s *Scanner) readBlockDevice(devPath, name string) *domain.StorageInfo {
 }
 
 func (s *Scanner) readBlockDeviceTemp(devPath string) float64 {
-	// Check for hwmon in the device directory
 	devicePath := filepath.Join(devPath, "device")
 	entries, err := os.ReadDir(devicePath)
 	if err != nil {
@@ -349,7 +323,6 @@ func (s *Scanner) readBlockDeviceTemp(devPath string) float64 {
 			continue
 		}
 		hwmonPath := filepath.Join(devicePath, entry.Name())
-		// Check subdirectories too (hwmon/hwmonN/)
 		subEntries, err := os.ReadDir(hwmonPath)
 		if err != nil {
 			continue
@@ -373,10 +346,6 @@ func (s *Scanner) readBlockDeviceTemp(devPath string) float64 {
 	}
 	return 0
 }
-
-// ============================================================
-// Helpers
-// ============================================================
 
 func readSysfsFile(path string) string {
 	data, err := os.ReadFile(path)

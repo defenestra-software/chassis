@@ -7,7 +7,6 @@ import (
 	gtklib "github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
-// showAboutDialog presents the About dialog.
 func showAboutDialog(parent *gtklib.Window) {
 	about := adw.NewAboutDialog()
 

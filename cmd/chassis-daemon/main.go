@@ -22,13 +22,11 @@ func main() {
 
 	slog.Info("starting chassis-daemon")
 
-	// Check if running as root
 	if os.Geteuid() != 0 {
 		slog.Error("chassis-daemon must run as root")
 		os.Exit(1)
 	}
 
-	// Create and start the D-Bus server
 	server, err := daemon.NewServer(logger)
 	if err != nil {
 		slog.Error("failed to create server", "error", err)
@@ -42,7 +40,6 @@ func main() {
 
 	slog.Info("daemon ready")
 
-	// Wait for termination signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 

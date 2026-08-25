@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	// NETLINK_KOBJECT_UEVENT is the netlink family for kernel uevents
 	NETLINK_KOBJECT_UEVENT = 15
 )
 
@@ -34,7 +33,6 @@ func NewNetlinkListener(logger *slog.Logger) *NetlinkListener {
 var _ port.EventListener = (*NetlinkListener)(nil)
 
 func (l *NetlinkListener) Subscribe() (<-chan domain.HardwareEvent, error) {
-	// Create netlink socket
 	fd, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, NETLINK_KOBJECT_UEVENT)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create netlink socket: %w", err)
@@ -70,13 +68,11 @@ func (l *NetlinkListener) readLoop(fd int) {
 		default:
 		}
 
-		// Set read timeout so we can check stopChan periodically
 		syscall.SetsockoptTimeval(fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO,
 			&syscall.Timeval{Sec: 1})
 
 		n, _, err := syscall.Recvfrom(fd, buf, 0)
 		if err != nil {
-			// Timeout is expected, continue
 			if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
 				continue
 			}
@@ -98,8 +94,6 @@ func (l *NetlinkListener) readLoop(fd int) {
 }
 
 func (l *NetlinkListener) parseUevent(data []byte) *domain.HardwareEvent {
-	// Uevent format: ACTION@DEVPATH\0KEY=VALUE\0KEY=VALUE\0...
-	// First part before @ is the action, rest is devpath, then null-separated key=value pairs
 
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	scanner.Split(scanNullTerminated)
@@ -112,7 +106,6 @@ func (l *NetlinkListener) parseUevent(data []byte) *domain.HardwareEvent {
 			continue
 		}
 
-		// First line contains action@devpath
 		if action == "" && strings.Contains(line, "@") {
 			parts := strings.SplitN(line, "@", 2)
 			if len(parts) == 2 {
@@ -122,13 +115,11 @@ func (l *NetlinkListener) parseUevent(data []byte) *domain.HardwareEvent {
 			continue
 		}
 
-		// Parse key=value pairs
 		if strings.HasPrefix(line, "SUBSYSTEM=") {
 			subsystem = strings.TrimPrefix(line, "SUBSYSTEM=")
 		}
 	}
 
-	// Only handle PCI and USB events
 	if subsystem != "pci" && subsystem != "usb" {
 		if subsystem != "" {
 			l.logger.Debug("ignoring uevent", "subsystem", subsystem, "action", action)
@@ -136,10 +127,8 @@ func (l *NetlinkListener) parseUevent(data []byte) *domain.HardwareEvent {
 		return nil
 	}
 
-	// Map action to our event type
 	switch action {
 	case "add", "remove", "bind", "unbind":
-		// Extract device ID from devpath
 		deviceID := extractDeviceID(devpath, subsystem)
 		if deviceID == "" {
 			return nil
@@ -165,8 +154,6 @@ func (l *NetlinkListener) parseUevent(data []byte) *domain.HardwareEvent {
 }
 
 func extractDeviceID(devpath, subsystem string) string {
-	// devpath looks like /devices/pci0000:00/0000:00:1f.3
-	// We want the last component that matches the subsystem format
 	parts := strings.Split(devpath, "/")
 	for i := len(parts) - 1; i >= 0; i-- {
 		part := parts[i]
@@ -181,16 +168,13 @@ func extractDeviceID(devpath, subsystem string) string {
 }
 
 func isPCIAddress(s string) bool {
-	// PCI address format: DDDD:BB:DD.F
 	if len(s) < 10 {
 		return false
 	}
-	// Simple validation: check for colons and dot in expected positions
 	return len(s) >= 12 && s[4] == ':' && s[7] == ':' && s[10] == '.'
 }
 
 func isUSBAddress(s string) bool {
-	// USB address format: X-Y or X-Y.Z
 	return strings.Contains(s, "-") && !strings.Contains(s, ":")
 }
 

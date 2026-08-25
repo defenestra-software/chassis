@@ -11,7 +11,6 @@ import (
 	"defenestra.io/chassis/internal/setup"
 )
 
-// RunSetup launches the setup window and returns 0 on success or 1 on cancellation.
 func RunSetup() int {
 	optional := false
 

@@ -81,7 +81,6 @@ func (s *GHWScanner) scanPCIDevices(opts []*ghw.WithOption) (*domain.DeviceNode,
 		Children: make([]*domain.DeviceNode, 0),
 	}
 
-	// Build map for parent-child relationships
 	deviceMap := make(map[string]*domain.DeviceNode)
 
 	for _, dev := range pciInfo.Devices {
@@ -89,7 +88,6 @@ func (s *GHWScanner) scanPCIDevices(opts []*ghw.WithOption) (*domain.DeviceNode,
 		deviceMap[node.ID] = node
 	}
 
-	// Organize into hierarchy based on PCI topology
 	for _, node := range deviceMap {
 		if node.ParentID != "" && node.ParentID != "pci" {
 			if parent, ok := deviceMap[node.ParentID]; ok {
@@ -97,7 +95,6 @@ func (s *GHWScanner) scanPCIDevices(opts []*ghw.WithOption) (*domain.DeviceNode,
 				continue
 			}
 		}
-		// Top-level PCI device
 		node.ParentID = "pci"
 		pciRoot.Children = append(pciRoot.Children, node)
 	}
@@ -112,25 +109,20 @@ func (s *GHWScanner) pciDeviceToNode(dev *ghw.PCIDevice) *domain.DeviceNode {
 		sysfsPath = filepath.Join(s.chrootPath, sysfsPath)
 	}
 
-	// Get current driver
 	driver := s.readDriver(sysfsPath)
 
-	// Get IOMMU group
 	iommuGroup := s.readIOMMUGroup(sysfsPath)
 
-	// Get class code
 	classCode := s.readSysfsFile(filepath.Join(sysfsPath, "class"))
 	classCode = strings.TrimPrefix(classCode, "0x")
 	if len(classCode) >= 4 {
 		classCode = classCode[:4] // Take first 4 hex digits (class + subclass)
 	}
 
-	// Build human-readable name
 	name := dev.Address
 	if dev.Vendor != nil && dev.Product != nil && !isUnknownName(dev.Product.Name) {
 		name = fmt.Sprintf("%s %s", dev.Vendor.Name, dev.Product.Name)
 	} else if dev.Vendor != nil && dev.Subclass != nil && !isUnknownName(dev.Subclass.Name) {
-		// Product unknown - use PCI subclass description (e.g., "PCI bridge")
 		name = fmt.Sprintf("%s %s", dev.Vendor.Name, dev.Subclass.Name)
 	} else if dev.Vendor != nil {
 		name = dev.Vendor.Name
@@ -154,38 +146,31 @@ func (s *GHWScanner) pciDeviceToNode(dev *ghw.PCIDevice) *domain.DeviceNode {
 	// device ID database (sourced from LACT), then fall back to pci.ids
 	// subsystem name or sysfs subsystem IDs.
 	if len(classCode) >= 2 && classCode[:2] == "03" {
-		// Read subsystem IDs from sysfs (more reliable than ghw for this)
+		// Subsystem IDs from sysfs are more reliable than ghw here.
 		subsysVendor := strings.TrimPrefix(readSysfsFileTrimmed(filepath.Join(flatpak.HostPath(sysfsPath), "subsystem_vendor")), "0x")
 		subsysDevice := strings.TrimPrefix(readSysfsFileTrimmed(filepath.Join(flatpak.HostPath(sysfsPath), "subsystem_device")), "0x")
 
-		// Try embedded database first (exact board partner match)
 		if marketingName := lookupDeviceName(vendorID, productID, subsysVendor, subsysDevice); marketingName != "" {
 			name = marketingName
 		} else if dev.Subsystem != nil && dev.Subsystem.Name != "" {
-			// Fall back to pci.ids subsystem name
 			subName := strings.ToLower(dev.Subsystem.Name)
 			if subName != "unknown" && !strings.Contains(subName, "unknown") {
 				name = dev.Subsystem.Name
 			}
 		}
 	} else if dev.Subsystem != nil && dev.Subsystem.Name != "" {
-		// Non-GPU: use subsystem name if meaningful
 		subName := strings.ToLower(dev.Subsystem.Name)
 		if subName != "unknown" && !strings.Contains(subName, "unknown") {
-			// Keep the current name - subsystem name isn't as useful for non-GPUs
 		}
 	}
 
-	// Determine capabilities
 	caps := []string{"unbind"}
 	if s.hasReset(sysfsPath) {
 		caps = append(caps, "reset")
 	}
 
-	// Determine parent from PCI topology (bus:device.function)
 	parentID := s.findPCIParent(dev.Address)
 
-	// Classify device
 	class := s.classifyPCIDevice(classCode)
 
 	if strings.EqualFold(vendorID, "1af4") {
@@ -194,9 +179,6 @@ func (s *GHWScanner) pciDeviceToNode(dev *ghw.PCIDevice) *domain.DeviceNode {
 		}
 	}
 
-	// Override for security processors that don't use class 10
-	// (AMD PSP/CCP often uses class 10 which is already handled,
-	// but some variants use class 13 or other codes)
 	if class == domain.DeviceClassOther {
 		nameLower := strings.ToLower(name)
 		if strings.Contains(nameLower, "psp") || strings.Contains(nameLower, "ccp") ||
@@ -207,7 +189,6 @@ func (s *GHWScanner) pciDeviceToNode(dev *ghw.PCIDevice) *domain.DeviceNode {
 		}
 	}
 
-	// Read hardware resources
 	resources := s.readPCIResources(sysfsPath)
 
 	return &domain.DeviceNode{
@@ -236,7 +217,6 @@ func isUnknownName(name string) bool {
 }
 
 var virtioDeviceClasses = map[string]domain.DeviceClass{
-	// Legacy
 	"1000": domain.DeviceClassNetwork,  // virtio-net
 	"1001": domain.DeviceClassStorage,  // virtio-blk
 	"1002": domain.DeviceClassMemory,   // virtio-balloon
@@ -244,7 +224,6 @@ var virtioDeviceClasses = map[string]domain.DeviceClass{
 	"1004": domain.DeviceClassStorage,  // virtio-scsi
 	"1005": domain.DeviceClassSecurity, // virtio-rng
 	"1009": domain.DeviceClassStorage,  // virtio-9p
-	// Modern
 	"1041": domain.DeviceClassNetwork,  // virtio-net
 	"1042": domain.DeviceClassStorage,  // virtio-blk
 	"1043": domain.DeviceClassSerial,   // virtio-console
@@ -282,7 +261,6 @@ func (s *GHWScanner) classifyPCIDevice(classCode string) domain.DeviceClass {
 	case "07":
 		return domain.DeviceClassSerial // Simple communication controller (UART, COM ports)
 	case "0c":
-		// Serial bus controller - most are system-level buses
 		if len(classCode) >= 4 {
 			subClass := classCode[2:4]
 			if subClass == "03" {
@@ -336,14 +314,12 @@ func (s *GHWScanner) readPCIResources(sysfsPath string) *domain.DeviceResources 
 		NUMANode: -1,
 	}
 
-	// Read primary IRQ
 	if irqStr := s.readSysfsFile(filepath.Join(sysfsPath, "irq")); irqStr != "" {
 		if irq, err := strconv.Atoi(irqStr); err == nil && irq > 0 {
 			res.IRQ = irq
 		}
 	}
 
-	// Read MSI IRQs
 	msiPath := filepath.Join(sysfsPath, "msi_irqs")
 	if entries, err := os.ReadDir(msiPath); err == nil {
 		for _, entry := range entries {
@@ -353,17 +329,14 @@ func (s *GHWScanner) readPCIResources(sysfsPath string) *domain.DeviceResources 
 		}
 	}
 
-	// Read NUMA node
 	if numaStr := s.readSysfsFile(filepath.Join(sysfsPath, "numa_node")); numaStr != "" {
 		if numa, err := strconv.Atoi(numaStr); err == nil {
 			res.NUMANode = numa
 		}
 	}
 
-	// Read local CPUs
 	res.LocalCPUs = s.readSysfsFile(filepath.Join(sysfsPath, "local_cpulist"))
 
-	// Parse resource file for memory and I/O ranges
 	resourceFile := filepath.Join(sysfsPath, "resource")
 	if data, err := os.ReadFile(resourceFile); err == nil {
 		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
@@ -402,7 +375,6 @@ func (s *GHWScanner) parseResourceLine(line string, index int) *domain.Resource 
 		return nil
 	}
 
-	// Skip empty/disabled resources
 	if start == 0 && end == 0 {
 		return nil
 	}
@@ -415,7 +387,6 @@ func (s *GHWScanner) parseResourceLine(line string, index int) *domain.Resource 
 		Index: index,
 	}
 
-	// Determine resource type from flags
 	// Bit 0: 1 = I/O, 0 = Memory
 	// Bit 3: 1 = Prefetchable (for memory)
 	if flags&0x1 != 0 {
@@ -437,7 +408,6 @@ func (s *GHWScanner) findPCIParent(address string) string {
 		return "pci"
 	}
 
-	// Devices on bus 00 are root devices
 	if parts[1] == "00" {
 		return "pci"
 	}

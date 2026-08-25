@@ -97,7 +97,6 @@ func (g *GtkUI) doAction(deviceID, action string) {
 	}()
 }
 
-// showToast shows a brief, self-dismissing notification.
 func (g *GtkUI) showToast(message string) {
 	glib.IdleAdd(func() {
 		toast := adw.NewToast(message)
@@ -213,7 +212,6 @@ func (g *GtkUI) showModesDialog(monitor *domain.Monitor) {
 	listBox.AddCSSClass("boxed-list")
 	listBox.SetSelectionMode(gtk.SelectionNone)
 
-	// Group modes by resolution, sorted largest first
 	type resGroup struct {
 		key    string
 		width  uint16
@@ -293,7 +291,6 @@ func (g *GtkUI) saveVBIOS(pciAddress string) {
 		return
 	}
 
-	// Use GTK FileDialog to let the user choose where to save
 	dialog := gtk.NewFileDialog()
 	dialog.SetTitle("Save VBIOS ROM")
 	filename := fmt.Sprintf("vbios_%s.rom", strings.ReplaceAll(pciAddress, ":", "-"))
@@ -332,14 +329,12 @@ func (g *GtkUI) saveVBIOS(pciAddress string) {
 func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	menu := gio.NewMenu()
 
-	// Setup section
 	if flatpak.InFlatpakEnvironment() {
 		setupSection := gio.NewMenu()
 		setupSection.Append("Setup Service…", "win.setup")
 		menu.AppendSection("", setupSection)
 	}
 
-	// Help section
 	helpSection := gio.NewMenu()
 	helpSection.Append("Keyboard Shortcuts", "win.shortcuts")
 	helpSection.Append("Wiki", "win.wiki")
@@ -347,7 +342,6 @@ func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	helpSection.Append("About", "win.about")
 	menu.AppendSection("", helpSection)
 
-	// Register actions
 	g.registerAction("shortcuts", func() {
 		showShortcutsDialog(&g.window.Window)
 	})
@@ -387,7 +381,6 @@ func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 		}
 	})
 
-	// Register keyboard accelerators
 	g.app.SetAccelsForAction("win.shortcuts", []string{"<Control>question"})
 	g.app.SetAccelsForAction("win.quit", []string{"<Control>q"})
 	g.app.SetAccelsForAction("win.search", []string{"<Control>f"})
@@ -408,14 +401,12 @@ func (g *GtkUI) navigateToDisplayByConnector(cardIndex int, connectorName string
 
 	cardPrefix := fmt.Sprintf("display:card%d-", cardIndex)
 
-	// Extract the connector index number from the DRM name (e.g., "HDMI-1" → "1", "DP-3" → "3")
 	parts := strings.Split(connectorName, "-")
 	connIdx := ""
 	if len(parts) > 0 {
 		connIdx = parts[len(parts)-1]
 	}
 
-	// Extract connector type prefix (e.g., "HDMI" from "HDMI-1", "DP" from "DP-3")
 	connTypePrefix := ""
 	if len(parts) > 0 {
 		connTypePrefix = strings.ToUpper(parts[0])
@@ -428,9 +419,6 @@ func (g *GtkUI) navigateToDisplayByConnector(cardIndex int, connectorName string
 		if node.DisplayInfo == nil {
 			continue
 		}
-		// Match by connector index and type prefix
-		// sysfs: "HDMI-A-1" → ConnectorType="HDMI-A", ConnectorIndex="1"
-		// DRM:   "HDMI-1"   → connTypePrefix="HDMI", connIdx="1"
 		if node.DisplayInfo.ConnectorIndex == connIdx &&
 			strings.HasPrefix(strings.ToUpper(node.DisplayInfo.ConnectorType), connTypePrefix) {
 			g.mu.RUnlock()
@@ -517,7 +505,6 @@ func (g *GtkUI) getInputIcon(node *domain.DeviceNode) string {
 	nameLower := strings.ToLower(node.Name)
 	driverLower := strings.ToLower(node.Driver)
 
-	// Gamepad / controller
 	if strings.Contains(nameLower, "controller") ||
 		strings.Contains(nameLower, "gamepad") ||
 		strings.Contains(nameLower, "joystick") ||
@@ -532,7 +519,6 @@ func (g *GtkUI) getInputIcon(node *domain.DeviceNode) string {
 		return "input-gaming-symbolic"
 	}
 
-	// Mouse / trackball / touchpad
 	if strings.Contains(nameLower, "mouse") ||
 		strings.Contains(nameLower, "trackball") ||
 		strings.Contains(nameLower, "touchpad") ||
@@ -544,6 +530,5 @@ func (g *GtkUI) getInputIcon(node *domain.DeviceNode) string {
 		return "input-mouse-symbolic"
 	}
 
-	// Default: keyboard
 	return "input-keyboard-symbolic"
 }

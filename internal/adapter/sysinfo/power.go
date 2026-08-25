@@ -12,7 +12,6 @@ import (
 	"defenestra.io/chassis/internal/core/domain"
 )
 
-// ScanPower returns battery and AC adapter devices.
 func (s *Scanner) ScanPower() []*domain.DeviceNode {
 	var nodes []*domain.DeviceNode
 
@@ -60,7 +59,6 @@ func (s *Scanner) scanPowerSupply(devPath, name string) *domain.DeviceNode {
 		if model != "" {
 			displayName = model
 		}
-		// Read capacity
 		capacity := readFile(filepath.Join(devPath, "capacity"))
 		if capacity != "" {
 			subtitle = fmt.Sprintf("%s%%", capacity)
@@ -71,7 +69,6 @@ func (s *Scanner) scanPowerSupply(devPath, name string) *domain.DeviceNode {
 			}
 			subtitle += status
 		}
-		// Read energy/charge info
 		energyNow := readFile(filepath.Join(devPath, "energy_now"))
 		energyFull := readFile(filepath.Join(devPath, "energy_full"))
 		if energyNow == "" {

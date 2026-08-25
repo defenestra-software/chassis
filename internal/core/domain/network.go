@@ -59,7 +59,6 @@ func FrequencyToChannel(freqMHz uint32) int {
 	case freqMHz >= 5170 && freqMHz <= 5825:
 		return int((freqMHz - 5000) / 5)
 	case freqMHz >= 5955 && freqMHz <= 7115:
-		// 6 GHz (WiFi 6E)
 		return int((freqMHz - 5950) / 5)
 	default:
 		return 0

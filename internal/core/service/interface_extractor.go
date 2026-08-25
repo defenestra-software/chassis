@@ -16,17 +16,13 @@ func ExtractInterfaces(root *domain.DeviceNode) {
 		return
 	}
 
-	// Phase 1: Extract interfaces on all nodes
 	extractInterfacesRecursive(root)
 
-	// Phase 2: Attach sensors from standalone nodes to their parent devices
 	attachCPUSensors(root)
 	attachGPUSensors(root)
 	attachPCISensors(root) // NVMe, Ethernet, etc.
 	attachMotherboardSensors(root)
 
-	// Phase 3: Deduplicate sensors - remove standalone sensor nodes whose
-	// device path matches a PCI/NVMe device that already has a sensor interface
 	deduplicateSensors(root)
 }
 
@@ -37,10 +33,8 @@ func extractInterfacesRecursive(root *domain.DeviceNode) {
 	}
 }
 
-// attachCPUSensors finds standalone CPU temperature sensor nodes (k10temp, coretemp)
-// and creates a sensor interface on the processor node.
+// attachCPUSensors moves k10temp/coretemp standalone nodes onto the processor.
 func attachCPUSensors(root *domain.DeviceNode) {
-	// Find the processor node
 	var processor *domain.DeviceNode
 	for _, child := range root.Children {
 		if child.ProcessorInfo != nil {
@@ -52,7 +46,6 @@ func attachCPUSensors(root *domain.DeviceNode) {
 		return
 	}
 
-	// Find CPU temperature sensor nodes
 	cpuSensorNames := map[string]bool{
 		"CPU Temperature": true,
 		"cpu_thermal":     true,
@@ -69,7 +62,6 @@ func attachCPUSensors(root *domain.DeviceNode) {
 			continue
 		}
 
-		// Build subtitle from sensor readings
 		var subtitleParts []string
 		for _, s := range child.SensorReadings {
 			if s.Type == "temperature" {
@@ -80,7 +72,6 @@ func attachCPUSensors(root *domain.DeviceNode) {
 			}
 		}
 
-		// Add sensor interface to the processor
 		processor.Interfaces = append(processor.Interfaces, &domain.DeviceInterface{
 			Type:         domain.InterfaceSensor,
 			Category:     domain.DeviceClassSensor,
@@ -90,14 +81,13 @@ func attachCPUSensors(root *domain.DeviceNode) {
 			SensorData:   child.SensorReadings,
 		})
 
-		break // Only one CPU temp sensor per processor
+		break
 	}
 }
 
-// attachGPUSensors finds standalone GPU temperature sensor nodes and creates
-// sensor interfaces on the corresponding GPU device nodes.
+// attachGPUSensors moves hwmon GPU temp nodes onto matching PCI GPUs.
+// Sensor scanner stores the GPU PCI address in Driver.
 func attachGPUSensors(root *domain.DeviceNode) {
-	// Collect GPU PCI addresses
 	gpuNodes := map[string]*domain.DeviceNode{} // PCI address → node
 	collectGPUNodes(root, gpuNodes)
 
@@ -105,7 +95,6 @@ func attachGPUSensors(root *domain.DeviceNode) {
 		return
 	}
 
-	// Find GPU temperature sensor nodes and match to GPUs
 	for _, child := range root.Children {
 		if child.Class != domain.DeviceClassSensor {
 			continue
@@ -114,7 +103,6 @@ func attachGPUSensors(root *domain.DeviceNode) {
 			continue
 		}
 
-		// GPU sensors have their PCI address in the Driver field (set during sensor scanning)
 		pciAddr := child.Driver
 		if pciAddr == "" {
 			continue
@@ -125,7 +113,6 @@ func attachGPUSensors(root *domain.DeviceNode) {
 			continue
 		}
 
-		// Check if GPU already has a sensor interface
 		hasSensor := false
 		for _, iface := range gpu.Interfaces {
 			if iface.Type == domain.InterfaceSensor {
@@ -137,7 +124,6 @@ func attachGPUSensors(root *domain.DeviceNode) {
 			continue
 		}
 
-		// Build subtitle
 		var subtitleParts []string
 		for _, s := range child.SensorReadings {
 			if s.Type == "temperature" {
@@ -161,7 +147,6 @@ func attachGPUSensors(root *domain.DeviceNode) {
 
 func collectGPUNodes(node *domain.DeviceNode, gpus map[string]*domain.DeviceNode) {
 	if node.GPUInfo != nil && node.Type == domain.DeviceTypePCI {
-		// Extract PCI address from ID (e.g., "pci:0000:03:00.0" → "0000:03:00.0")
 		pciAddr := strings.TrimPrefix(node.ID, "pci:")
 		gpus[pciAddr] = node
 	}
@@ -170,15 +155,11 @@ func collectGPUNodes(node *domain.DeviceNode, gpus map[string]*domain.DeviceNode
 	}
 }
 
-// pciAddrRegex matches PCI addresses like "0000:03:00.0" in sysfs paths.
 var pciAddrRegex = regexp.MustCompile(`\b[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-9a-fA-F]\b`)
 
-// attachPCISensors finds standalone sensor nodes and resolves their hwmon
-// device symlinks to find the parent PCI device. This handles NVMe temps
-// (where Driver="nvme0"), Ethernet temps, WiFi temps, and any other
-// PCI-backed hwmon device.
+// attachPCISensors attaches NVMe/Ethernet/WiFi hwmon nodes via Driver PCI addr
+// or by resolving the hwmon device symlink.
 func attachPCISensors(root *domain.DeviceNode) {
-	// Collect all PCI devices by address
 	pciNodes := map[string]*domain.DeviceNode{}
 	collectPCINodes(root, pciNodes)
 
@@ -187,11 +168,8 @@ func attachPCISensors(root *domain.DeviceNode) {
 			continue
 		}
 
-		// Try to find the PCI device this sensor belongs to.
-		// Strategy 1: Driver field is a PCI address directly
 		target := pciNodes[child.Driver]
 
-		// Strategy 2: Resolve the hwmon device symlink to find PCI address in path
 		if target == nil && child.Path != "" {
 			if pciAddr := resolveSensorPCIAddr(child.Path); pciAddr != "" {
 				target = pciNodes[pciAddr]
@@ -202,7 +180,6 @@ func attachPCISensors(root *domain.DeviceNode) {
 			continue
 		}
 
-		// Skip if device already has a sensor interface (e.g., GPU sensors from attachGPUSensors)
 		hasSensor := false
 		for _, iface := range target.Interfaces {
 			if iface.Type == domain.InterfaceSensor {
@@ -235,30 +212,21 @@ func attachPCISensors(root *domain.DeviceNode) {
 	}
 }
 
-// resolveSensorPCIAddr resolves a hwmon sysfs path's device symlink to find
-// the parent PCI address. For example:
-//
-//	/sys/class/hwmon/hwmon5/device → /sys/devices/pci0000:00/.../0000:03:00.0/nvme/nvme0
-//
-// Returns "0000:03:00.0" by scanning the resolved path for PCI address patterns.
 func resolveSensorPCIAddr(hwmonPath string) string {
 	deviceLink := filepath.Join(hwmonPath, "device")
 	resolved, err := filepath.EvalSymlinks(flatpak.HostPath(deviceLink))
 	if err != nil {
-		// Try without flatbridge translation
+		// Retry without flatbridge host path translation
 		resolved, err = filepath.EvalSymlinks(deviceLink)
 		if err != nil {
 			return ""
 		}
 	}
 
-	// Find the last PCI address in the resolved path - that's the device's own address.
-	// Path looks like: /sys/devices/pci0000:00/0000:00:01.2/0000:03:00.0/nvme/nvme0
 	matches := pciAddrRegex.FindAllString(resolved, -1)
 	if len(matches) == 0 {
 		return ""
 	}
-	// Return the last match - that's the leaf PCI device (the one we want)
 	return matches[len(matches)-1]
 }
 
@@ -272,10 +240,8 @@ func collectPCINodes(node *domain.DeviceNode, pci map[string]*domain.DeviceNode)
 	}
 }
 
-// attachMotherboardSensors finds motherboard-related sensor nodes (Gigabyte WMI,
-// ACPI Thermal Zone) and attaches them to the motherboard device.
+// attachMotherboardSensors moves board WMI/ACPI/EC sensor nodes onto the motherboard.
 func attachMotherboardSensors(root *domain.DeviceNode) {
-	// Find motherboard node
 	var motherboard *domain.DeviceNode
 	for _, child := range root.Children {
 		if child.MotherboardInfo != nil {
@@ -313,8 +279,7 @@ func attachMotherboardSensors(root *domain.DeviceNode) {
 			}
 		}
 
-		// Use a unique scroll tag per sensor source so multiple sensor sections
-		// (e.g., "Gigabyte Sensors" + "ACPI Thermal Zone") all render on the page
+		// Unique scroll tag so multiple board sensor groups all render
 		scrollTag := "sensors-" + strings.ToLower(strings.ReplaceAll(child.Name, " ", "-"))
 
 		motherboard.Interfaces = append(motherboard.Interfaces, &domain.DeviceInterface{
@@ -322,24 +287,18 @@ func attachMotherboardSensors(root *domain.DeviceNode) {
 			Category:     domain.DeviceClassSensor,
 			SectionTitle: child.Name,
 			ScrollTag:    scrollTag,
-			Name:         child.Name, // Show sensor source name in sidebar, not motherboard name
+			Name:         child.Name, // sidebar shows source name, not motherboard
 			Subtitle:     strings.Join(subtitleParts, " · "),
 			SensorData:   child.SensorReadings,
 		})
 	}
 }
 
-// deduplicateSensors removes standalone sensor nodes from root.Children
-// when the same hardware sensor is already represented as an interface
-// on a parent device (GPU, NVMe, Ethernet, Processor, Motherboard, etc.).
+// deduplicateSensors drops standalone sensor nodes already attached as interfaces.
 func deduplicateSensors(root *domain.DeviceNode) {
-	// Build a set of PCI addresses that have sensor interfaces on their devices.
-	// This directly mirrors the attachment logic - if a sensor was attached to a
-	// PCI device, the standalone node is a duplicate.
 	claimedPCIAddrs := map[string]bool{}
 	collectClaimedPCIAddrs(root, claimedPCIAddrs)
 
-	// Also track devices that claimed sensors by name (CPU, motherboard)
 	claimedNames := map[string]bool{}
 	collectClaimedSensorNames(root, claimedNames)
 
@@ -350,18 +309,16 @@ func deduplicateSensors(root *domain.DeviceNode) {
 			continue
 		}
 
-		// Check if this sensor was claimed by name (CPU, motherboard sensors)
 		if claimedNames[child.Name] {
 			continue
 		}
 
-		// Check if this sensor's PCI parent was claimed
 		if child.Driver != "" && claimedPCIAddrs[child.Driver] {
-			continue // Driver is a PCI address directly
+			continue
 		}
 		if child.Path != "" {
 			if pciAddr := resolveSensorPCIAddr(child.Path); pciAddr != "" && claimedPCIAddrs[pciAddr] {
-				continue // Resolved PCI address is claimed
+				continue
 			}
 		}
 
@@ -386,7 +343,6 @@ func collectClaimedPCIAddrs(node *domain.DeviceNode, claimed map[string]bool) {
 }
 
 func collectClaimedSensorNames(root *domain.DeviceNode, claimed map[string]bool) {
-	// CPU sensor names
 	cpuNames := []string{"CPU Temperature", "cpu_thermal"}
 	for _, child := range root.Children {
 		if child.ProcessorInfo != nil {
@@ -401,7 +357,6 @@ func collectClaimedSensorNames(root *domain.DeviceNode, claimed map[string]bool)
 		}
 	}
 
-	// Motherboard sensor names
 	mbSensorNames := []string{
 		"Gigabyte Sensors", "ACPI Thermal Zone", "Motherboard Sensors",
 		"ASUS Sensors", "ASUS EC Sensors",
@@ -421,73 +376,56 @@ func collectClaimedSensorNames(root *domain.DeviceNode, claimed map[string]bool)
 }
 
 func extractNodeInterfaces(node *domain.DeviceNode) {
-	// Skip container/root nodes
 	if node.ID == "root" || node.ID == "pci" || node.ID == "usb" {
 		return
 	}
 
 	var ifaces []*domain.DeviceInterface
 
-	// GPU: creates Graphics + Sensor (if temps) + Display (per monitor)
 	if node.GPUInfo != nil {
 		ifaces = append(ifaces, extractGPUInterfaces(node)...)
 	}
 
-	// Storage: creates Storage + Sensor (if temp > 0)
 	if node.StorageInfo != nil {
 		ifaces = append(ifaces, extractStorageInterfaces(node)...)
 	}
 
-	// Network: creates Network interface
 	if node.NetworkInfo != nil {
 		ifaces = append(ifaces, extractNetworkInterface(node))
 	}
 
-	// Processor: creates Processor interface + Sensor (if CPU temp found in tree)
 	if node.ProcessorInfo != nil {
 		ifaces = append(ifaces, extractProcessorInterface(node))
 	}
 
-	// Display: creates Display interface
 	if node.DisplayInfo != nil {
 		ifaces = append(ifaces, extractDisplayInterface(node))
 	}
 
-	// Motherboard: creates System interface
 	if node.MotherboardInfo != nil {
 		ifaces = append(ifaces, extractMotherboardInterface(node))
 	}
 
-	// Memory module: creates Memory interface
 	if node.MemoryModule != nil {
 		ifaces = append(ifaces, extractMemoryInterface(node))
 	}
 
-	// Standalone sensors (not attached to GPU/Storage): creates Sensor interface
 	if len(node.SensorReadings) > 0 && node.GPUInfo == nil && node.StorageInfo == nil {
 		ifaces = append(ifaces, extractSensorInterface(node))
 	}
 
-	// Battery (peripheral): creates battery info on the device
-	// (Not a separate category - shown on the device page)
-
-	// Camera: creates Camera interface with device paths
 	if node.Class == domain.DeviceClassCamera {
 		ifaces = append(ifaces, extractCameraInterface(node))
 	}
 
-	// Serial port: creates Serial interface if device has /dev/tty* paths
 	if hasSerialPaths(node) {
 		ifaces = append(ifaces, extractSerialInterface(node))
 	}
 
-	// Debug: creates Debug interface for USB devices with vendor-specific debug ports
 	if node.HasDebugPort {
 		ifaces = append(ifaces, extractDebugInterface(node))
 	}
 
-	// If no specific interfaces were extracted, create a fallback
-	// matching the device's primary class
 	if len(ifaces) == 0 {
 		ifaces = append(ifaces, extractFallbackInterface(node))
 	}
@@ -499,7 +437,6 @@ func extractGPUInterfaces(node *domain.DeviceNode) []*domain.DeviceInterface {
 	var ifaces []*domain.DeviceInterface
 	gpu := node.GPUInfo
 
-	// Graphics interface
 	subtitle := node.Driver
 	if vram := gpu.VRAMTotalString(); vram != "" {
 		subtitle = fmt.Sprintf("%s · %s VRAM", subtitle, vram)
@@ -513,7 +450,6 @@ func extractGPUInterfaces(node *domain.DeviceNode) []*domain.DeviceInterface {
 		GPUInfo:      gpu,
 	})
 
-	// Sensor interface (if the device has sensor readings from hwmon)
 	if len(node.SensorReadings) > 0 {
 		var subtitleParts []string
 		for _, s := range node.SensorReadings {
@@ -534,7 +470,6 @@ func extractGPUInterfaces(node *domain.DeviceNode) []*domain.DeviceInterface {
 		})
 	}
 
-	// Display interfaces (one per connected monitor)
 	for _, monitor := range gpu.Monitors {
 		if monitor.Status != domain.ConnectionConnected {
 			continue
@@ -560,12 +495,11 @@ func extractStorageInterfaces(node *domain.DeviceNode) []*domain.DeviceInterface
 	var ifaces []*domain.DeviceInterface
 	stor := node.StorageInfo
 
-	// Storage interface
 	subtitle := node.Driver
 	if stor.SizeBytes > 0 {
 		subtitle = fmt.Sprintf("%s · %s", subtitle, stor.SizeString())
 	}
-	// Include block device path so the device paths section doesn't duplicate it
+	// Keep /dev path on the interface so the paths section does not re-list it
 	var storagePaths []string
 	if stor.BlockDevice != "" {
 		storagePaths = append(storagePaths, "/dev/"+stor.BlockDevice)
@@ -581,9 +515,7 @@ func extractStorageInterfaces(node *domain.DeviceNode) []*domain.DeviceInterface
 		DevicePaths:  storagePaths,
 	})
 
-	// Sensor interface is NOT created here - attachPCISensors will attach
-	// the real hwmon sensor with live-updating paths. Temperature is shown
-	// in the Sensors section on the detail page, not in the Storage section.
+	// Temps come from attachPCISensors hwmon paths, not a Storage sensor iface.
 
 	return ifaces
 }
@@ -739,7 +671,6 @@ func extractCameraInterface(node *domain.DeviceNode) *domain.DeviceInterface {
 }
 
 func extractFallbackInterface(node *domain.DeviceNode) *domain.DeviceInterface {
-	// Map the device's current class to an interface type
 	ifaceType := classToInterfaceType(node.Class)
 	category := node.Class
 
@@ -767,7 +698,6 @@ func hasSerialPaths(node *domain.DeviceNode) bool {
 }
 
 func extractSerialInterface(node *domain.DeviceNode) *domain.DeviceInterface {
-	// Collect only serial-related paths
 	var serialPaths []string
 	for _, p := range node.DevicePaths {
 		if strings.Contains(p, "/ttyACM") || strings.Contains(p, "/ttyUSB") || strings.Contains(p, "/serial/") {

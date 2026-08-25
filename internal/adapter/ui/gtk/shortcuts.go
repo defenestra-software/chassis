@@ -40,7 +40,6 @@ const shortcutsXML = `<?xml version="1.0" encoding="UTF-8"?>
 </interface>
 `
 
-// showShortcutsDialog presents the keyboard shortcuts window.
 func showShortcutsDialog(parent *gtklib.Window) {
 	builder := gtklib.NewBuilderFromString(shortcutsXML)
 	obj := builder.GetObject("shortcuts")

@@ -72,7 +72,6 @@ var categoryRegistry = []categoryInfo{
 	{domain.DeviceClassOther, "Other Devices", "dialog-question-symbolic", 99},
 }
 
-// lookupSubsystemVendor maps PCI subsystem vendor IDs to board partner names.
 var subsystemVendors = map[string]string{
 	"1002": "AMD",
 	"1043": "ASUS",
@@ -102,7 +101,6 @@ var subsystemVendors = map[string]string{
 	"17aa": "Lenovo",
 }
 
-// getCategoryIcon returns the sidebar icon name for a device class.
 func getCategoryIcon(class domain.DeviceClass) string {
 	for _, cat := range categoryRegistry {
 		if cat.class == class {

@@ -23,29 +23,24 @@ type GtkUI struct {
 	window *adw.ApplicationWindow
 	toast  *adw.ToastOverlay
 
-	// Navigation
 	splitView *adw.NavigationSplitView
 	navView   *adw.NavigationView
 	listPage  *adw.NavigationPage
 
-	// Sidebar
 	categoryList *gtk.ListBox
 	iommuList    *gtk.ListBox
 	iommuSection *gtk.Box
 	hasIOMMU     bool
 
-	// Device list
 	deviceListBox *gtk.ListBox
 	contentStack  *gtk.Stack
 	iommuViewBox  *gtk.Box
 	listTitle     string
 
-	// Search
 	searchBar   *gtk.SearchBar
 	searchEntry *gtk.SearchEntry
 	searchBtn   *gtk.ToggleButton
 
-	// State
 	deviceRoot           *domain.DeviceNode
 	deviceMap            map[string]*domain.DeviceNode
 	interfacesByCategory map[domain.DeviceClass][]interfaceEntry
@@ -59,7 +54,6 @@ type GtkUI struct {
 	progressToast        *adw.Toast
 	mu                   sync.RWMutex
 
-	// Callbacks
 	onAction          port.ActionHandler
 	onRefresh         func() error
 	driverMgmtEnabled bool
@@ -83,7 +77,6 @@ func (g *GtkUI) Run() error {
 	g.app = adw.NewApplication("io.defenestra.Chassis", gio.ApplicationFlagsNone)
 
 	g.app.ConnectActivate(func() {
-		// Show app icon in the header bar decoration
 		if s := gtk.SettingsGetDefault(); s != nil {
 			s.SetObjectProperty("gtk-decoration-layout", "icon:minimize,maximize,close")
 		}
@@ -114,19 +107,15 @@ func (g *GtkUI) setupUI() {
 	g.window.SetDefaultSize(1100, 700)
 	g.window.SetSizeRequest(360, 500) // Minimum size for phone-like layouts
 
-	// Toast overlay wraps everything
 	g.toast = adw.NewToastOverlay()
 
-	// Navigation split view (sidebar + content)
 	g.splitView = adw.NewNavigationSplitView()
 	g.splitView.SetMinSidebarWidth(200)
 	g.splitView.SetMaxSidebarWidth(280)
 
-	// Build sidebar
 	sidebarPage := g.buildSidebarPage()
 	g.splitView.SetSidebar(sidebarPage)
 
-	// Build content (NavigationView for list → detail navigation)
 	g.navView = adw.NewNavigationView()
 	g.listPage = g.buildDeviceListPage()
 	g.navView.Push(g.listPage)
@@ -162,7 +151,6 @@ func (g *GtkUI) ShowDeviceTree(root *domain.DeviceNode) {
 	g.indexDevices(root)
 	g.mu.Unlock()
 
-	// Schedule GTK updates on the main thread
 	glib.IdleAdd(func() {
 		g.rebuildSidebar()
 		if g.selectedView != "" {
@@ -177,8 +165,6 @@ func (g *GtkUI) indexDevices(node *domain.DeviceNode) {
 	}
 	g.deviceMap[node.ID] = node
 
-	// Index by interfaces - each interface puts the device into a sidebar category.
-	// A GPU with Graphics + Sensor + Display interfaces appears in 3 categories.
 	isLeaf := len(node.Children) == 0
 	isReceiver := node.Type == domain.DeviceTypeUSB && node.Class == domain.DeviceClassUSBController && len(node.Children) > 0
 
@@ -192,7 +178,6 @@ func (g *GtkUI) indexDevices(node *domain.DeviceNode) {
 			}
 
 			cat := iface.Category
-			// Merge related categories
 			switch cat {
 			case domain.DeviceClassHub:
 				cat = domain.DeviceClassUSBController
@@ -205,7 +190,6 @@ func (g *GtkUI) indexDevices(node *domain.DeviceNode) {
 			)
 		}
 
-		// IOMMU groups still index by device (PCI only)
 		if node.IOMMUGroup >= 0 && node.Type == domain.DeviceTypePCI {
 			g.iommuGroups[node.IOMMUGroup] = append(g.iommuGroups[node.IOMMUGroup], node)
 		}
@@ -252,7 +236,6 @@ func (g *GtkUI) RefreshDevice(device *domain.DeviceNode) {
 	g.mu.Lock()
 	g.deviceMap[device.ID] = device
 
-	// Remove old interface entries for this device and re-add
 	for cat, entries := range g.interfacesByCategory {
 		var filtered []interfaceEntry
 		for _, e := range entries {
@@ -262,7 +245,6 @@ func (g *GtkUI) RefreshDevice(device *domain.DeviceNode) {
 		}
 		g.interfacesByCategory[cat] = filtered
 	}
-	// Re-index this device's interfaces
 	for _, iface := range device.Interfaces {
 		g.interfacesByCategory[iface.Category] = append(
 			g.interfacesByCategory[iface.Category],

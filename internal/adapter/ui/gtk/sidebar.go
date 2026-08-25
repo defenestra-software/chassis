@@ -12,7 +12,6 @@ import (
 )
 
 func (g *GtkUI) buildSidebarPage() *adw.NavigationPage {
-	// Header bar with hamburger menu
 	headerBar := adw.NewHeaderBar()
 	headerBar.SetShowEndTitleButtons(false)
 
@@ -21,7 +20,6 @@ func (g *GtkUI) buildSidebarPage() *adw.NavigationPage {
 	menuBtn.SetMenuModel(g.buildAppMenu())
 	headerBar.PackEnd(menuBtn)
 
-	// Refresh button
 	refreshBtn := gtk.NewButtonFromIconName("view-refresh-symbolic")
 	refreshBtn.SetTooltipText("Rescan Devices")
 	refreshBtn.ConnectClicked(func() {
@@ -33,10 +31,8 @@ func (g *GtkUI) buildSidebarPage() *adw.NavigationPage {
 	})
 	headerBar.PackStart(refreshBtn)
 
-	// Sidebar content
 	contentBox := gtk.NewBox(gtk.OrientationVertical, 0)
 
-	// Categories section
 	catLabel := gtk.NewLabel("Categories")
 	catLabel.AddCSSClass("heading")
 	catLabel.AddCSSClass("dim-label")
@@ -53,7 +49,6 @@ func (g *GtkUI) buildSidebarPage() *adw.NavigationPage {
 		if row == nil || g.restoringSelection {
 			return
 		}
-		// Deselect IOMMU list when category is selected
 		if g.iommuList != nil {
 			g.iommuList.UnselectAll()
 		}
@@ -61,7 +56,6 @@ func (g *GtkUI) buildSidebarPage() *adw.NavigationPage {
 	})
 	contentBox.Append(g.categoryList)
 
-	// Separator between categories and IOMMU groups
 	g.iommuSection = gtk.NewBox(gtk.OrientationVertical, 0)
 	g.iommuSection.SetVisible(false)
 
@@ -79,20 +73,17 @@ func (g *GtkUI) buildSidebarPage() *adw.NavigationPage {
 		if row == nil || g.restoringSelection {
 			return
 		}
-		// Deselect category list when IOMMU is selected
 		g.categoryList.UnselectAll()
 		g.selectView("iommu:all")
 	})
 	g.iommuSection.Append(g.iommuList)
 	contentBox.Append(g.iommuSection)
 
-	// Scrolled window for sidebar
 	scroll := gtk.NewScrolledWindow()
 	scroll.SetChild(contentBox)
 	scroll.SetVExpand(true)
 	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
 
-	// Wrap in toolbar view
 	toolbarView := adw.NewToolbarView()
 	toolbarView.AddTopBar(headerBar)
 	toolbarView.SetContent(scroll)
@@ -101,7 +92,6 @@ func (g *GtkUI) buildSidebarPage() *adw.NavigationPage {
 }
 
 func (g *GtkUI) rebuildSidebar() {
-	// Clear category list
 	for {
 		row := g.categoryList.RowAtIndex(0)
 		if row == nil {
@@ -115,8 +105,6 @@ func (g *GtkUI) rebuildSidebar() {
 	groups := g.iommuGroups
 	g.mu.RUnlock()
 
-	// Build sorted category list - show all categories even if empty,
-	// so they appear immediately when devices are added on refresh.
 	cats := make([]categoryInfo, len(categoryRegistry))
 	copy(cats, categoryRegistry)
 	sort.Slice(cats, func(i, j int) bool { return cats[i].sortOrder < cats[j].sortOrder })
@@ -148,7 +136,6 @@ func (g *GtkUI) rebuildSidebar() {
 		g.categoryList.Append(row)
 	}
 
-	// IOMMU Groups - separate list below the separator
 	for {
 		row := g.iommuList.RowAtIndex(0)
 		if row == nil {
@@ -192,7 +179,6 @@ func (g *GtkUI) rebuildSidebar() {
 		g.iommuList.Append(row)
 	}
 
-	// Restore previously selected row without triggering selectView
 	g.mu.RLock()
 	selectedView := g.selectedView
 	g.mu.RUnlock()
@@ -200,7 +186,6 @@ func (g *GtkUI) rebuildSidebar() {
 	if selectedView != "" {
 		g.restoringSelection = true
 		if selectedView == "iommu:all" {
-			// Select the IOMMU row
 			if row := g.iommuList.RowAtIndex(0); row != nil {
 				g.iommuList.SelectRow(row)
 			}
@@ -226,13 +211,11 @@ func (g *GtkUI) selectView(view string) {
 	g.selectedView = view
 	g.mu.Unlock()
 
-	// Pop back to list page if on detail page
 	if g.onDetailPage {
 		g.navView.Pop()
 		g.onDetailPage = false
 	}
 
-	// Update list page title
 	g.listTitle = g.titleForView(view)
 	g.listPage.SetTitle(g.listTitle)
 
