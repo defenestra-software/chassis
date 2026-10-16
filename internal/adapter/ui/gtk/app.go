@@ -78,7 +78,7 @@ func (g *GtkUI) Run() error {
 
 	g.app.ConnectActivate(func() {
 		if s := gtk.SettingsGetDefault(); s != nil {
-			s.SetObjectProperty("gtk-decoration-layout", "icon:minimize,maximize,close")
+			s.SetObjectProperty("gtk-decoration-layout", ":minimize,maximize,close")
 		}
 
 		g.setupUI()
