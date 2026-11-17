@@ -130,9 +130,11 @@ func (g *GtkUI) setupUI() {
 	// At 600sp or less, the split view collapses and shows sidebar/content
 	// one at a time with back-button navigation between them.
 	breakpoint := adw.NewBreakpoint(
-		adw.NewBreakpointConditionLength(adw.BreakpointConditionMaxWidth, 600, adw.LengthUnitSp))
+		adw.NewBreakpointConditionLength(adw.BreakpointConditionMaxWidth, 600, adw.LengthUnitSp),
+	)
 	breakpoint.AddSetterDirect(
-		glib.BaseObject(g.splitView), "collapsed", glib.NewValue(true))
+		glib.BaseObject(g.splitView), "collapsed", glib.NewValue(true),
+	)
 	g.window.AddBreakpoint(breakpoint)
 }
 

@@ -14,6 +14,7 @@ import (
 	flatpak "gitlab.com/defenestra-software/go-flatbridge"
 
 	"defenestra.io/chassis/internal/core/domain"
+	"defenestra.io/chassis/internal/core/service"
 	"defenestra.io/chassis/internal/shared"
 )
 
@@ -24,13 +25,16 @@ const (
 )
 
 type Server struct {
-	conn   *dbus.Conn
-	logger *slog.Logger
+	devices *service.DeviceService
+	logger  *slog.Logger
+
+	conn *dbus.Conn
 }
 
-func NewServer(logger *slog.Logger) (*Server, error) {
+func NewServer(logger *slog.Logger, devices *service.DeviceService) (*Server, error) {
 	return &Server{
-		logger: logger,
+		devices: devices,
+		logger:  logger,
 	}, nil
 }
 
@@ -74,6 +78,12 @@ func (s *Server) Start() error {
 					}},
 					{Name: "Ping", Args: []introspect.Arg{
 						{Name: "reply", Type: "s", Direction: "out"},
+					}},
+					{Name: "ListDevices", Args: []introspect.Arg{
+						{Name: "json_data", Type: "s", Direction: "out"},
+					}},
+					{Name: "ListDevicesWithIdentifiers", Args: []introspect.Arg{
+						{Name: "json_data", Type: "s", Direction: "out"},
 					}},
 					{Name: "ReadSMART", Args: []introspect.Arg{
 						{Name: "block_device", Type: "s", Direction: "in"},

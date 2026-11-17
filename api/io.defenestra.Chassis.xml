@@ -26,6 +26,14 @@
       <arg name="reply" type="s" direction="out"/>
     </method>
 
+    <method name="ListDevices">
+      <arg name="json_data" type="s" direction="out"/>
+    </method>
+
+    <method name="ListDevicesWithIdentifiers">
+      <arg name="json_data" type="s" direction="out"/>
+    </method>
+
     <method name="ReadSMART">
       <arg name="block_device" type="s" direction="in"/>
       <arg name="json_data" type="s" direction="out"/>

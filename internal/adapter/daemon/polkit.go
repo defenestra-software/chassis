@@ -8,9 +8,10 @@ import (
 
 // Polkit action IDs. These must match api/io.defenestra.Chassis.policy.
 const (
-	actionManageDrivers = "io.defenestra.Chassis.manage-drivers"
-	actionManageModules = "io.defenestra.Chassis.manage-modules"
-	actionDumpVBIOS     = "io.defenestra.Chassis.dump-vbios"
+	actionManageDrivers   = "io.defenestra.Chassis.manage-drivers"
+	actionManageModules   = "io.defenestra.Chassis.manage-modules"
+	actionDumpVBIOS       = "io.defenestra.Chassis.dump-vbios"
+	actionReadIdentifiers = "io.defenestra.Chassis.read-identifiers"
 )
 
 type polkitSubject struct {

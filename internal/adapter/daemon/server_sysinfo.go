@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -10,11 +11,30 @@ import (
 	flatpak "gitlab.com/defenestra-software/go-flatbridge"
 
 	"defenestra.io/chassis/internal/core/domain"
+	"defenestra.io/chassis/internal/core/port"
 )
 
 func (s *Server) ReadSystemInfo() (string, *dbus.Error) {
 	s.logger.Info("system info read requested")
+	return readSystemInfo(s.logger), nil
+}
 
+// SMBIOSReader runs inside the daemon because dmidecode requires root.
+type SMBIOSReader struct {
+	logger *slog.Logger
+}
+
+var _ port.SystemInfoReader = (*SMBIOSReader)(nil)
+
+func NewSMBIOSReader(logger *slog.Logger) *SMBIOSReader {
+	return &SMBIOSReader{logger: logger}
+}
+
+func (r *SMBIOSReader) ReadSystemInfo() (string, error) {
+	return readSystemInfo(r.logger), nil
+}
+
+func readSystemInfo(logger *slog.Logger) string {
 	serial := ""
 	if data, err := os.ReadFile(flatpak.HostPath("/sys/class/dmi/id/board_serial")); err == nil {
 		serial = strings.TrimSpace(string(data))
@@ -26,12 +46,11 @@ func (s *Server) ReadSystemInfo() (string, *dbus.Error) {
 	if err == nil {
 		memJSON = parseDMIMemory(string(output))
 	} else {
-		s.logger.Debug("dmidecode failed, trying sysfs DMI", "error", err)
-		memJSON = s.readMemoryFromSysfs()
+		logger.Debug("dmidecode failed, trying sysfs DMI", "error", err)
+		memJSON = readMemoryFromSysfs(logger)
 	}
 
-	result := fmt.Sprintf(`{"board_serial":%q,"memory_modules":%s}`, serial, memJSON)
-	return result, nil
+	return fmt.Sprintf(`{"board_serial":%q,"memory_modules":%s}`, serial, memJSON)
 }
 
 func parseDMIMemory(output string) string {
@@ -263,11 +282,11 @@ var jedecVendors = map[string]string{
 }
 
 // readMemoryFromSysfs parses SMBIOS Type 17 entries when dmidecode is missing.
-func (s *Server) readMemoryFromSysfs() string {
+func readMemoryFromSysfs(logger *slog.Logger) string {
 	dmiPath := flatpak.HostPath("/sys/firmware/dmi/tables/DMI")
 	data, err := os.ReadFile(dmiPath)
 	if err != nil {
-		s.logger.Debug("could not read DMI tables", "error", err)
+		logger.Debug("could not read DMI tables", "error", err)
 		return "[]"
 	}
 

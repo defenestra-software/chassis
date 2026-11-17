@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added `ListDevices` to the D-Bus interface to return the device tree as JSON, including GPU, storage, and system information without Serial numbers, MAC addresses, and other identifying fields.
+- Added `ListDevicesWithIdentifiers` to return the same tree with identifying fields after polkit authorization.
+
 ## v0.1.6
 - Added support for Logitech F310
 - Added support for Stadia controllers USB and BLE interfaces
