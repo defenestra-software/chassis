@@ -1,0 +1,1345 @@
+{
+  "03eb": {
+    "2402": {
+      "name": "Wooting One (update mode)"
+    },
+    "2403": {
+      "name": "Wooting Two (update mode)"
+    },
+    "ff01": {
+      "name": "Wooting One Legacy",
+      "class": "input"
+    },
+    "ff02": {
+      "name": "Wooting Two Legacy",
+      "class": "input"
+    }
+  },
+  "03f0": {
+    "0001": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1f01": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1f02": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1f06": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1f08": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1f09": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1f0a": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1fe0": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1fe1": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1fe2": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1fe3": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1fe5": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1fe6": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1fe7": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    },
+    "1fe8": {
+      "class": "power",
+      "note": "HP / HPE UPS"
+    }
+  },
+  "0463": {
+    "0001": {
+      "class": "power",
+      "note": "MGE / Eaton UPS"
+    },
+    "ffff": {
+      "class": "power",
+      "note": "MGE / Eaton UPS"
+    }
+  },
+  "047c": {
+    "ffff": {
+      "class": "power",
+      "note": "Dell (UPS via Eaton OEM)"
+    }
+  },
+  "0483": {
+    "a113": {
+      "class": "power",
+      "note": "STMicroelectronics (CyberPower/generic UPS chipset)"
+    },
+    "a430": {
+      "class": "power",
+      "note": "STMicroelectronics (CyberPower/generic UPS chipset)"
+    }
+  },
+  "048d": {
+    "5702": {
+      "class": "lighting",
+      "note": "ITE Tech RGB LED Controller"
+    },
+    "5711": {
+      "class": "lighting",
+      "note": "ITE Tech RGB LED Controller"
+    },
+    "8297": {
+      "class": "lighting",
+      "note": "ITE Tech RGB Fusion 2 USB"
+    },
+    "8910": {
+      "class": "lighting",
+      "note": "ITE Tech RGB LED Controller"
+    },
+    "8950": {
+      "class": "lighting",
+      "note": "ITE Tech RGB Fusion 2 USB"
+    }
+  },
+  "04b3": {
+    "0001": {
+      "class": "power",
+      "note": "IBM UPS"
+    }
+  },
+  "04b4": {
+    "5500": {
+      "class": "power",
+      "note": "Riello / Cypress Semiconductor UPS"
+    }
+  },
+  "04d8": {
+    "d004": {
+      "class": "power",
+      "note": "Microchip / OpenUPS"
+    },
+    "d005": {
+      "class": "power",
+      "note": "Microchip / OpenUPS"
+    }
+  },
+  "050d": {
+    "0375": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "0551": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "0750": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "0751": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "0900": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "0910": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "0912": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "0980": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "0f51": {
+      "class": "power",
+      "note": "Belkin UPS"
+    },
+    "1100": {
+      "class": "power",
+      "note": "Belkin UPS"
+    }
+  },
+  "051d": {
+    "0000": {
+      "class": "power",
+      "note": "APC / Schneider Electric UPS"
+    },
+    "0002": {
+      "class": "power",
+      "note": "APC / Schneider Electric UPS"
+    },
+    "0003": {
+      "class": "power",
+      "note": "APC / Schneider Electric UPS"
+    },
+    "0004": {
+      "class": "power",
+      "note": "APC / Schneider Electric UPS"
+    },
+    "0005": {
+      "class": "power",
+      "note": "APC / Schneider Electric UPS"
+    }
+  },
+  "054c": {
+    "09af": {
+      "name": "Sony PlayStation VR",
+      "class": "vr_headset"
+    }
+  },
+  "0592": {
+    "0002": {
+      "class": "power",
+      "note": "Powerware / Eaton UPS"
+    },
+    "0004": {
+      "class": "power",
+      "note": "Powerware / Eaton UPS"
+    }
+  },
+  "05b8": {
+    "0000": {
+      "class": "power",
+      "note": "Sysgration UPS"
+    }
+  },
+  "05dd": {
+    "041b": {
+      "class": "power",
+      "note": "Delta UPS"
+    },
+    "a011": {
+      "class": "power",
+      "note": "Delta UPS"
+    },
+    "a0a0": {
+      "class": "power",
+      "note": "Delta UPS"
+    }
+  },
+  "0665": {
+    "5161": {
+      "class": "power",
+      "note": "Cypress Semiconductor (generic UPS chipset)"
+    }
+  },
+  "06da": {
+    "0002": {
+      "class": "power",
+      "note": "Phoenixtec UPS"
+    },
+    "0003": {
+      "class": "power",
+      "note": "Phoenixtec UPS"
+    },
+    "0004": {
+      "class": "power",
+      "note": "Phoenixtec UPS"
+    },
+    "0005": {
+      "class": "power",
+      "note": "Phoenixtec UPS"
+    },
+    "0201": {
+      "class": "power",
+      "note": "Phoenixtec UPS"
+    },
+    "0601": {
+      "class": "power",
+      "note": "Phoenixtec UPS"
+    },
+    "ffff": {
+      "class": "power",
+      "note": "Phoenixtec UPS"
+    }
+  },
+  "075d": {
+    "0300": {
+      "class": "power",
+      "note": "iDowell UPS"
+    }
+  },
+  "0764": {
+    "0005": {
+      "class": "power",
+      "note": "CyberPower UPS"
+    },
+    "0501": {
+      "class": "power",
+      "note": "CyberPower UPS"
+    },
+    "0601": {
+      "class": "power",
+      "note": "CyberPower UPS"
+    }
+  },
+  "0925": {
+    "1234": {
+      "class": "power",
+      "note": "Lakeview Research (generic UPS chipset)"
+    }
+  },
+  "09ae": {
+    "0001": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "1003": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "1007": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "1008": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "1009": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "1010": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "1330": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2005": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2007": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2008": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2009": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2010": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2011": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2012": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2013": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "2014": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3008": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3009": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3010": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3011": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3012": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3013": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3014": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3015": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3016": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "3024": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "4001": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "4002": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "4003": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "4004": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "4005": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "4006": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "4007": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    },
+    "4008": {
+      "class": "power",
+      "note": "Tripp Lite UPS"
+    }
+  },
+  "09d6": {
+    "0001": {
+      "class": "power",
+      "note": "KSTAR UPS"
+    }
+  },
+  "0b05": {
+    "1854": {
+      "class": "lighting",
+      "note": "ASUS AURA Core"
+    },
+    "1866": {
+      "class": "lighting",
+      "note": "ASUS AURA Core"
+    },
+    "1867": {
+      "class": "lighting",
+      "note": "ASUS AURA Addressable"
+    },
+    "1869": {
+      "class": "lighting",
+      "note": "ASUS AURA Core"
+    },
+    "1872": {
+      "class": "lighting",
+      "note": "ASUS AURA Addressable"
+    },
+    "18a3": {
+      "class": "lighting",
+      "note": "ASUS AURA Addressable"
+    },
+    "18a5": {
+      "class": "lighting",
+      "note": "ASUS AURA Addressable"
+    },
+    "18f3": {
+      "class": "lighting",
+      "note": "ASUS AURA Motherboard"
+    },
+    "1939": {
+      "class": "lighting",
+      "note": "ASUS AURA Motherboard"
+    },
+    "19af": {
+      "class": "lighting",
+      "note": "ASUS AURA Motherboard"
+    },
+    "1aa6": {
+      "class": "lighting",
+      "note": "ASUS AURA Motherboard"
+    },
+    "1bed": {
+      "class": "lighting",
+      "note": "ASUS AURA Motherboard"
+    }
+  },
+  "0bb4": {
+    "0306": {
+      "class": "vr_headset",
+      "note": "HTC Vive hardware (game-devices-udev)"
+    },
+    "0309": {
+      "class": "vr_headset",
+      "note": "HTC Vive hardware (game-devices-udev)"
+    },
+    "030a": {
+      "class": "vr_headset",
+      "note": "HTC Vive hardware (game-devices-udev)"
+    },
+    "030b": {
+      "class": "vr_headset",
+      "note": "HTC Vive hardware (game-devices-udev)"
+    },
+    "030c": {
+      "class": "vr_headset",
+      "note": "HTC Vive hardware (game-devices-udev)"
+    },
+    "030e": {
+      "class": "vr_headset",
+      "note": "HTC Vive hardware (game-devices-udev)"
+    },
+    "0313": {
+      "name": "HTC VIVE Cosmos",
+      "class": "vr_headset"
+    },
+    "2c87": {
+      "class": "vr_headset",
+      "note": "HTC Vive hardware (game-devices-udev)"
+    }
+  },
+  "0d28": {
+    "0204": {
+      "name": "DAPLink CMSIS-DAP",
+      "class": "debug"
+    }
+  },
+  "0d9f": {
+    "0001": {
+      "class": "power",
+      "note": "Powercom UPS"
+    },
+    "0004": {
+      "class": "power",
+      "note": "Powercom UPS"
+    },
+    "00a2": {
+      "class": "power",
+      "note": "Powercom UPS"
+    },
+    "00a3": {
+      "class": "power",
+      "note": "Powercom UPS"
+    },
+    "00a4": {
+      "class": "power",
+      "note": "Powercom UPS"
+    },
+    "00a5": {
+      "class": "power",
+      "note": "Powercom UPS"
+    },
+    "00a6": {
+      "class": "power",
+      "note": "Powercom UPS"
+    }
+  },
+  "0f03": {
+    "0001": {
+      "class": "power",
+      "note": "Unitek UPS"
+    }
+  },
+  "10af": {
+    "0000": {
+      "class": "power",
+      "note": "Liebert / Phoenixtec UPS"
+    },
+    "0001": {
+      "class": "power",
+      "note": "Liebert / Phoenixtec UPS"
+    },
+    "0002": {
+      "class": "power",
+      "note": "Liebert / Phoenixtec UPS"
+    },
+    "0004": {
+      "class": "power",
+      "note": "Liebert / Phoenixtec UPS"
+    },
+    "0008": {
+      "class": "power",
+      "note": "Liebert / Phoenixtec UPS"
+    }
+  },
+  "1209": {
+    "beee": {
+      "name": "SoloKeys Solo 2",
+      "class": "security"
+    }
+  },
+  "1462": {
+    "1562": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "1563": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "1564": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "1720": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7b12": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7b16": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7b17": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7b18": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7b50": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7b85": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7b92": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7b93": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c02": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c34": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c35": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c36": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c37": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c56": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c59": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c60": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c67": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c71": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c73": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c75": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c76": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c77": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c79": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c80": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c81": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c82": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c83": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c84": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c86": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c87": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c89": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c90": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c91": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c92": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c94": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7c95": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d03": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d06": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d09": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d13": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d17": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d20": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d25": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d28": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d29": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d30": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d32": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d36": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d38": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d41": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d42": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d46": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d50": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d51": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d52": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d53": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d54": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d59": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d67": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d69": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d70": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d73": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d75": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d76": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    },
+    "7d78": {
+      "class": "lighting",
+      "note": "MSI Mystic Light"
+    }
+  },
+  "14f0": {
+    "00c9": {
+      "class": "power",
+      "note": "GE UPS"
+    }
+  },
+  "1532": {
+    "0f07": {
+      "class": "lighting",
+      "note": "Razer Chroma Mug Holder"
+    },
+    "0f08": {
+      "class": "lighting",
+      "note": "Razer Base Station Chroma"
+    },
+    "0f09": {
+      "class": "lighting",
+      "note": "Razer Chroma HDK"
+    },
+    "0f0d": {
+      "class": "lighting",
+      "note": "Razer Laptop Stand Chroma"
+    },
+    "0f0e": {
+      "class": "lighting",
+      "note": "Razer Chroma Case Fan Controller"
+    },
+    "0f1a": {
+      "class": "lighting",
+      "note": "Razer Core X Chroma"
+    },
+    "0f1f": {
+      "class": "lighting",
+      "note": "Razer Chroma Addressable RGB Controller"
+    },
+    "0f20": {
+      "class": "lighting",
+      "note": "Razer Base Station V2 Chroma"
+    }
+  },
+  "18d1": {
+    "9400": {
+      "class": "game_controller",
+      "note": "Google Stadia Controller"
+    }
+  },
+  "1b1c": {
+    "0c0b": {
+      "class": "lighting",
+      "note": "Corsair Lighting Node Pro"
+    },
+    "0c10": {
+      "class": "lighting",
+      "note": "Corsair Commander Pro"
+    },
+    "0c1a": {
+      "class": "lighting",
+      "note": "Corsair Lighting Node Core"
+    },
+    "0c1c": {
+      "class": "lighting",
+      "note": "Corsair Commander Core"
+    },
+    "0c1d": {
+      "class": "lighting",
+      "note": "Corsair Commander Core"
+    },
+    "0c1e": {
+      "class": "lighting",
+      "note": "Corsair LS100 Lighting Kit"
+    },
+    "0c23": {
+      "class": "lighting",
+      "note": "Corsair LT100"
+    },
+    "0c2a": {
+      "class": "lighting",
+      "note": "Corsair Commander Core XT"
+    },
+    "0c32": {
+      "class": "lighting",
+      "note": "Corsair Commander Core 2"
+    },
+    "0c3c": {
+      "class": "lighting",
+      "note": "Corsair Commander Core"
+    },
+    "0c3d": {
+      "class": "lighting",
+      "note": "Corsair Commander Core"
+    },
+    "0c3e": {
+      "class": "lighting",
+      "note": "Corsair Commander Core"
+    },
+    "1d00": {
+      "class": "lighting",
+      "note": "Corsair 1000D Obsidian RGB"
+    },
+    "1d04": {
+      "class": "lighting",
+      "note": "Corsair SPEC OMEGA RGB"
+    }
+  },
+  "1cb0": {
+    "0032": {
+      "class": "power",
+      "note": "Legrand UPS"
+    },
+    "0038": {
+      "class": "power",
+      "note": "Legrand UPS"
+    }
+  },
+  "1e71": {
+    "2001": {
+      "class": "lighting",
+      "note": "NZXT Hue 2"
+    },
+    "2002": {
+      "class": "lighting",
+      "note": "NZXT Hue 2 Ambient"
+    },
+    "2005": {
+      "class": "lighting",
+      "note": "NZXT Hue 2 Motherboard"
+    },
+    "2006": {
+      "class": "lighting",
+      "note": "NZXT Smart Device V2"
+    },
+    "2009": {
+      "class": "lighting",
+      "note": "NZXT RGB Fan Controller"
+    },
+    "200b": {
+      "class": "lighting",
+      "note": "NZXT Hue 2 Motherboard"
+    },
+    "200d": {
+      "class": "lighting",
+      "note": "NZXT Smart Device V2.1"
+    },
+    "200e": {
+      "class": "lighting",
+      "note": "NZXT RGB Fan Controller"
+    },
+    "200f": {
+      "class": "lighting",
+      "note": "NZXT Smart Device V2.2"
+    },
+    "2010": {
+      "class": "lighting",
+      "note": "NZXT RGB Fan Controller"
+    },
+    "2011": {
+      "class": "lighting",
+      "note": "NZXT RGB Fan Controller"
+    },
+    "2012": {
+      "class": "lighting",
+      "note": "NZXT RGB Controller"
+    },
+    "2019": {
+      "class": "lighting",
+      "note": "NZXT RGB Fan Controller"
+    },
+    "201b": {
+      "class": "lighting",
+      "note": "NZXT B650E Motherboard"
+    },
+    "201f": {
+      "class": "lighting",
+      "note": "NZXT RGB Fan Controller"
+    },
+    "2020": {
+      "class": "lighting",
+      "note": "NZXT RGB Fan Controller"
+    },
+    "2021": {
+      "class": "lighting",
+      "note": "NZXT RGB Controller"
+    },
+    "2022": {
+      "class": "lighting",
+      "note": "NZXT RGB Fan Controller"
+    }
+  },
+  "26ce": {
+    "01a2": {
+      "class": "lighting",
+      "note": "ASRock LED Controller (Polychrome USB)"
+    }
+  },
+  "28de": {
+    "2000": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2010": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2011": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2012": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2021": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2022": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2050": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2101": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2102": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2150": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2300": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    },
+    "2301": {
+      "class": "vr_headset",
+      "note": "Valve SteamVR hardware (game-devices-udev)"
+    }
+  },
+  "2b2d": {
+    "ffff": {
+      "class": "power",
+      "note": "AEG UPS"
+    }
+  },
+  "2e51": {
+    "0000": {
+      "class": "power",
+      "note": "Ever UPS"
+    },
+    "ffff": {
+      "class": "power",
+      "note": "Ever UPS"
+    }
+  },
+  "2e66": {
+    "0101": {
+      "class": "power",
+      "note": "Salicru UPS"
+    },
+    "0201": {
+      "class": "power",
+      "note": "Salicru UPS"
+    },
+    "0202": {
+      "class": "power",
+      "note": "Salicru UPS"
+    },
+    "0203": {
+      "class": "power",
+      "note": "Salicru UPS"
+    },
+    "0300": {
+      "class": "power",
+      "note": "Salicru UPS"
+    },
+    "0302": {
+      "class": "power",
+      "note": "Salicru UPS"
+    }
+  },
+  "31e3": {
+    "1100": {
+      "name": "Wooting One",
+      "class": "input"
+    },
+    "1101": {
+      "name": "Wooting One (Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1102": {
+      "name": "Wooting One (2nd Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1200": {
+      "name": "Wooting Two",
+      "class": "input"
+    },
+    "1201": {
+      "name": "Wooting Two (Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1202": {
+      "name": "Wooting Two (2nd Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1210": {
+      "name": "Wooting Lekker",
+      "class": "input"
+    },
+    "1211": {
+      "name": "Wooting Lekker (Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1212": {
+      "name": "Wooting Lekker (2nd Alt-gamepad mode)",
+      "class": "input"
+    },
+    "121f": {
+      "name": "Wooting Lekker (update mode)"
+    },
+    "1220": {
+      "name": "Wooting Two HE",
+      "class": "input"
+    },
+    "1221": {
+      "name": "Wooting Two HE (Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1222": {
+      "name": "Wooting Two HE (2nd Alt-gamepad mode)",
+      "class": "input"
+    },
+    "122f": {
+      "name": "Wooting Two HE (update mode)"
+    },
+    "1230": {
+      "name": "Wooting Two HE (ARM)",
+      "class": "input"
+    },
+    "1231": {
+      "name": "Wooting Two HE (ARM) (Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1232": {
+      "name": "Wooting Two HE (ARM) (2nd Alt-gamepad mode)",
+      "class": "input"
+    },
+    "123f": {
+      "name": "Wooting Two HE (ARM) (update mode)"
+    },
+    "1300": {
+      "name": "Wooting 60HE",
+      "class": "input"
+    },
+    "1301": {
+      "name": "Wooting 60HE (Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1302": {
+      "name": "Wooting 60HE (2nd Alt-gamepad mode)",
+      "class": "input"
+    },
+    "130f": {
+      "name": "Wooting 60HE (update mode)"
+    },
+    "1310": {
+      "name": "Wooting 60HE (ARM)",
+      "class": "input"
+    },
+    "1311": {
+      "name": "Wooting 60HE (ARM) (Alt-gamepad mode)",
+      "class": "input"
+    },
+    "1312": {
+      "name": "Wooting 60HE (ARM) (2nd Alt-gamepad mode)",
+      "class": "input"
+    },
+    "131f": {
+      "name": "Wooting 60HE (ARM) (update mode)"
+    }
+  },
+  "3297": {
+    "1969": {
+      "name": "ZSA Moonlander",
+      "class": "input"
+    }
+  },
+  "32ac": {
+    "0010": {
+      "name": "Framework Audio Expansion Card",
+      "class": "audio"
+    },
+    "0012": {
+      "name": "Framework Laptop 16 Keyboard Module - ANSI",
+      "class": "input"
+    },
+    "0014": {
+      "name": "Framework Laptop 16 Numpad Module",
+      "class": "input"
+    },
+    "0018": {
+      "name": "Framework Laptop 16 Keyboard Module",
+      "class": "input"
+    }
+  },
+  "35bd": {
+    "0101": {
+      "name": "Bigscreen Beyond",
+      "class": "vr_headset"
+    },
+    "0105": {
+      "name": "Bigscreen Beyond Audio Strap",
+      "class": "vr_headset"
+    },
+    "0202": {
+      "name": "Bigscreen Bigeye",
+      "class": "vr_headset"
+    },
+    "4004": {
+      "name": "Bigscreen Beyond (firmware mode)",
+      "class": "vr_headset"
+    }
+  },
+  "3746": {
+    "ffff": {
+      "class": "power",
+      "note": "EcoFlow UPS"
+    }
+  },
+  "4234": {
+    "0001": {
+      "class": "power",
+      "note": "PowerVar UPS"
+    },
+    "0002": {
+      "class": "power",
+      "note": "PowerVar UPS"
+    }
+  },
+  "c251": {
+    "2710": {
+      "name": "Keil ULINK",
+      "class": "debug"
+    }
+  },
+  "feed": {
+    "1307": {
+      "name": "ErgoDox EZ",
+      "class": "input"
+    }
+  }
+}

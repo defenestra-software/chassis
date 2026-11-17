@@ -426,6 +426,11 @@ func extractNodeInterfaces(node *domain.DeviceNode) {
 		ifaces = append(ifaces, extractDebugInterface(node))
 	}
 
+	// Keyboards with a gamepad mode: listed under their own class and as a controller.
+	if node.HasGameController && node.Class != domain.DeviceClassGameController {
+		ifaces = append(ifaces, extractFallbackInterface(node), extractGameControllerInterface(node))
+	}
+
 	if len(ifaces) == 0 {
 		ifaces = append(ifaces, extractFallbackInterface(node))
 	}
@@ -738,6 +743,16 @@ func extractDebugInterface(node *domain.DeviceNode) *domain.DeviceInterface {
 	}
 }
 
+func extractGameControllerInterface(node *domain.DeviceNode) *domain.DeviceInterface {
+	return &domain.DeviceInterface{
+		Type:         domain.InterfaceGameController,
+		Category:     domain.DeviceClassGameController,
+		SectionTitle: "Game Controller",
+		ScrollTag:    "game-controller",
+		Subtitle:     node.Driver,
+	}
+}
+
 func classToInterfaceType(class domain.DeviceClass) domain.InterfaceType {
 	switch class {
 	case domain.DeviceClassGPU:
@@ -752,6 +767,8 @@ func classToInterfaceType(class domain.DeviceClass) domain.InterfaceType {
 		return domain.InterfaceUSB
 	case domain.DeviceClassInput:
 		return domain.InterfaceInput
+	case domain.DeviceClassGameController:
+		return domain.InterfaceGameController
 	case domain.DeviceClassSerial:
 		return domain.InterfaceSerial
 	case domain.DeviceClassCamera:
@@ -774,6 +791,8 @@ func classToInterfaceType(class domain.DeviceClass) domain.InterfaceType {
 		return domain.InterfaceMemory
 	case domain.DeviceClassPortable:
 		return domain.InterfacePortable
+	case domain.DeviceClassVRHeadset:
+		return domain.InterfaceVRHeadset
 	case domain.DeviceClassDebug:
 		return domain.InterfaceDebug
 	case domain.DeviceClassBridge:

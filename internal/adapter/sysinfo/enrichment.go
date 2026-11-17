@@ -163,6 +163,9 @@ func (s *Scanner) ScanBluetoothHID() []*domain.DeviceNode {
 		if strings.Contains(nameLower, "audio") || strings.Contains(nameLower, "headset") || strings.Contains(nameLower, "speaker") {
 			class = domain.DeviceClassAudio
 		}
+		if joysticks, _ := filepath.Glob(filepath.Join(devPath, "input/input*/js*")); len(joysticks) > 0 {
+			class = domain.DeviceClassGameController
+		}
 
 		vendor := ""
 		var batteryInfo *domain.BatteryInfo

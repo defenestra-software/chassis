@@ -14,59 +14,62 @@ const (
 type DeviceClass string
 
 const (
-	DeviceClassGPU           DeviceClass = "gpu"
-	DeviceClassNetwork       DeviceClass = "network"
-	DeviceClassStorage       DeviceClass = "storage"
-	DeviceClassAudio         DeviceClass = "audio"
-	DeviceClassUSBController DeviceClass = "usb_controller"
-	DeviceClassBridge        DeviceClass = "bridge"
-	DeviceClassInput         DeviceClass = "input"
-	DeviceClassSerial        DeviceClass = "serial"
-	DeviceClassWireless      DeviceClass = "wireless"
-	DeviceClassCamera        DeviceClass = "camera"
-	DeviceClassPrinter       DeviceClass = "printer"
-	DeviceClassHub           DeviceClass = "hub"
-	DeviceClassSecurity      DeviceClass = "security"
-	DeviceClassDisplay       DeviceClass = "display"
-	DeviceClassProcessor     DeviceClass = "processor"
-	DeviceClassSensor        DeviceClass = "sensor"
-	DeviceClassPower         DeviceClass = "power"
-	DeviceClassLighting      DeviceClass = "lighting"
-	DeviceClassMemory        DeviceClass = "memory"
-	DeviceClassPortable      DeviceClass = "portable"
-	DeviceClassDebug         DeviceClass = "debug"
-	DeviceClassOther         DeviceClass = "other"
+	DeviceClassGPU            DeviceClass = "gpu"
+	DeviceClassNetwork        DeviceClass = "network"
+	DeviceClassStorage        DeviceClass = "storage"
+	DeviceClassAudio          DeviceClass = "audio"
+	DeviceClassUSBController  DeviceClass = "usb_controller"
+	DeviceClassBridge         DeviceClass = "bridge"
+	DeviceClassInput          DeviceClass = "input"
+	DeviceClassGameController DeviceClass = "game_controller"
+	DeviceClassSerial         DeviceClass = "serial"
+	DeviceClassWireless       DeviceClass = "wireless"
+	DeviceClassCamera         DeviceClass = "camera"
+	DeviceClassPrinter        DeviceClass = "printer"
+	DeviceClassHub            DeviceClass = "hub"
+	DeviceClassSecurity       DeviceClass = "security"
+	DeviceClassDisplay        DeviceClass = "display"
+	DeviceClassProcessor      DeviceClass = "processor"
+	DeviceClassSensor         DeviceClass = "sensor"
+	DeviceClassPower          DeviceClass = "power"
+	DeviceClassLighting       DeviceClass = "lighting"
+	DeviceClassMemory         DeviceClass = "memory"
+	DeviceClassPortable       DeviceClass = "portable"
+	DeviceClassVRHeadset      DeviceClass = "vr_headset"
+	DeviceClassDebug          DeviceClass = "debug"
+	DeviceClassOther          DeviceClass = "other"
 )
 
 type DeviceNode struct {
-	ID              string
-	ParentID        string
-	Name            string
-	Vendor          string
-	Product         string
-	VendorID        string
-	ProductID       string
-	Driver          string
-	Path            string
-	Type            DeviceType
-	Class           DeviceClass
-	ClassCode       string
-	IOMMUGroup      int
-	Capabilities    []string
-	Children        []*DeviceNode
-	GPUInfo         *GPUInfo
-	StorageInfo     *StorageInfo
-	NetworkInfo     *NetworkInfo
-	ProcessorInfo   *ProcessorInfo
-	DisplayInfo     *DisplayInfo
-	MotherboardInfo *MotherboardInfo
-	MemoryModule    *MemoryModuleInfo
-	DevicePaths     []string
-	SensorReadings  []*SensorInfo
-	BatteryInfo     *BatteryInfo
-	HasDebugPort    bool
-	Resources       *DeviceResources
-	Interfaces      []*DeviceInterface
+	ID                string
+	ParentID          string
+	Name              string
+	Vendor            string
+	Product           string
+	VendorID          string
+	ProductID         string
+	Driver            string
+	Path              string
+	Type              DeviceType
+	Class             DeviceClass
+	ClassCode         string
+	IOMMUGroup        int
+	Capabilities      []string
+	Children          []*DeviceNode
+	GPUInfo           *GPUInfo
+	StorageInfo       *StorageInfo
+	NetworkInfo       *NetworkInfo
+	ProcessorInfo     *ProcessorInfo
+	DisplayInfo       *DisplayInfo
+	MotherboardInfo   *MotherboardInfo
+	MemoryModule      *MemoryModuleInfo
+	DevicePaths       []string
+	SensorReadings    []*SensorInfo
+	BatteryInfo       *BatteryInfo
+	HasDebugPort      bool
+	HasGameController bool
+	Resources         *DeviceResources
+	Interfaces        []*DeviceInterface
 }
 
 type ResourceType string

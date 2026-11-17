@@ -7,3 +7,9 @@ import _ "embed"
 //
 //go:embed device_ids.json
 var DeviceIDsJSON []byte
+
+// USBIDsJSON maps USB vendor ID and product ID to a display name and an
+// optional device class. Class override heuristics.
+//
+//go:embed usb_ids.json
+var USBIDsJSON []byte

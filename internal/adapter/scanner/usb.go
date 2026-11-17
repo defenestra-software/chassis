@@ -149,51 +149,56 @@ func (s *GHWScanner) usbDeviceToNode(sysfsPath, name string) *domain.DeviceNode 
 		class = s.classifyUSBDeviceByInterface(sysfsPath)
 	}
 
-	// Gamepads that declare only vendor-specific interfaces (Xbox protocol,
-	// Stadia in Bluetooth mode) would land as Other with a debug port.
-	isGamepad := s.hasXboxGamepadInterface(sysfsPath) || gamepadDevices[vendorID+":"+productID]
-	if isGamepad && class == domain.DeviceClassOther {
-		class = domain.DeviceClassInput
-	}
-
 	// Security keys report as HID; reclassify by known VID/product name.
 	if class == domain.DeviceClassInput {
 		class = s.reclassifySecurityKey(class, vendorID, product)
 	}
 
-	if class == domain.DeviceClassInput {
-		class = s.reclassifyUPS(class, vendorID, productID)
+	// DualSense and DualShock carry audio interfaces, which outrank HID above.
+	hasGameController := s.hasXboxGamepadInterface(sysfsPath) || hasJoystickNode(sysfsPath)
+	if hasGameController {
+		switch class {
+		case domain.DeviceClassInput, domain.DeviceClassAudio, domain.DeviceClassOther:
+			class = domain.DeviceClassGameController
+		}
 	}
-
-	// RGB controllers may report as HID or vendor-specific Other.
-	class = s.reclassifyMiscHID(class, vendorID, productID)
 
 	if class == domain.DeviceClassOther {
 		class = s.reclassifyPortableDevice(class, vendorID, product, sysfsPath)
 	}
 
-	// ff interfaces are debug probes; skip RGB/gamepads that also use ff.
-	hasDebug := class != domain.DeviceClassLighting && !isGamepad && s.hasVendorDebugInterface(sysfsPath)
+	known, _ := lookupUSBDevice(vendorID, productID)
+	if known.Name != "" {
+		deviceName = known.Name
+	}
+	if known.Class != "" {
+		class = known.Class
+	}
+
+	// ff interfaces are debug probes, except on Xbox-protocol pads and on
+	// listed devices that use ff for WebUSB or RGB control.
+	hasDebug := known.Class == "" && !hasGameController && s.hasVendorDebugInterface(sysfsPath)
 
 	id := fmt.Sprintf("usb:%s", name)
 
 	return &domain.DeviceNode{
-		ID:           id,
-		ParentID:     "usb",
-		Name:         deviceName,
-		Vendor:       manufacturer,
-		Product:      product,
-		VendorID:     vendorID,
-		ProductID:    productID,
-		Driver:       driver,
-		Path:         filepath.Join("/sys/bus/usb/devices", name),
-		Type:         domain.DeviceTypeUSB,
-		Class:        class,
-		ClassCode:    bDeviceClass,
-		IOMMUGroup:   -1,
-		HasDebugPort: hasDebug,
-		Capabilities: []string{"unbind"},
-		Children:     make([]*domain.DeviceNode, 0),
+		ID:                id,
+		ParentID:          "usb",
+		Name:              deviceName,
+		Vendor:            manufacturer,
+		Product:           product,
+		VendorID:          vendorID,
+		ProductID:         productID,
+		Driver:            driver,
+		Path:              filepath.Join("/sys/bus/usb/devices", name),
+		Type:              domain.DeviceTypeUSB,
+		Class:             class,
+		ClassCode:         bDeviceClass,
+		IOMMUGroup:        -1,
+		HasDebugPort:      hasDebug,
+		HasGameController: hasGameController,
+		Capabilities:      []string{"unbind"},
+		Children:          make([]*domain.DeviceNode, 0),
 	}
 }
 
@@ -294,6 +299,18 @@ func (s *GHWScanner) scanHIDPeripherals(usbDeviceMap map[string]*domain.DeviceNo
 
 		driver := s.readDriver(devPath)
 		class := s.classifyHIDPeripheral(hidName, driver)
+		if hasJoystickInput(devPath) {
+			class = domain.DeviceClassGameController
+		}
+
+		if known, ok := lookupUSBDevice(hidVID, hidPID); ok {
+			if known.Name != "" {
+				hidName = known.Name
+			}
+			if known.Class != "" {
+				class = known.Class
+			}
+		}
 
 		peripheral := &domain.DeviceNode{
 			ID:           fmt.Sprintf("hid:%s:%s", hidVID, hidPID),
@@ -456,9 +473,20 @@ func (s *GHWScanner) hasVendorDebugInterface(sysfsPath string) bool {
 	return false
 }
 
-// gamepadDevices: controllers with no usable USB class codes (ff/00 only).
-var gamepadDevices = map[string]bool{
-	"18d1:9400": true, // Google Stadia Controller (USB side while paired via Bluetooth)
+// hasJoystickNode is true when the kernel registered a joystick for the USB
+// device, either on an interface (xpad) or on a HID device under one.
+func hasJoystickNode(sysfsPath string) bool {
+	for _, pattern := range []string{"*/input/input*/js*", "*/*/input/input*/js*"} {
+		if matches, _ := filepath.Glob(filepath.Join(sysfsPath, pattern)); len(matches) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func hasJoystickInput(hidDevPath string) bool {
+	matches, _ := filepath.Glob(filepath.Join(hidDevPath, "input/input*/js*"))
+	return len(matches) > 0
 }
 
 // hasXboxGamepadInterface detects Xbox-protocol controllers by interface
@@ -556,7 +584,6 @@ var securityKeyVendors = map[string]bool{
 	"1050": true, // Yubico
 	"096e": true, // Feitian
 	"20a0": true, // Nitrokey
-	"1209": true, // Generic (often used by open-source FIDO keys)
 	"2581": true, // Ledger (crypto hardware wallet)
 	"2c97": true, // Ledger (newer)
 	"534c": true, // SatoshiLabs (Trezor)
@@ -579,161 +606,6 @@ func (s *GHWScanner) reclassifySecurityKey(current domain.DeviceClass, vendorID,
 		}
 	}
 
-	return current
-}
-
-// Sourced from OpenRGB's device detector tables.
-var rgbControllerDevices = map[string]bool{
-	// ITE Tech - Gigabyte RGB Fusion 2 USB controllers
-	"048d:5702": true, // ITE Tech RGB LED Controller
-	"048d:5711": true, // ITE Tech RGB LED Controller
-	"048d:8297": true, // ITE Tech RGB Fusion 2 USB
-	"048d:8910": true, // ITE Tech RGB LED Controller
-	"048d:8950": true, // ITE Tech RGB Fusion 2 USB
-
-	// ASUS AURA - motherboard + addressable LED controllers
-	"0b05:1854": true, // ASUS AURA Core
-	"0b05:1866": true, // ASUS AURA Core
-	"0b05:1867": true, // ASUS AURA Addressable
-	"0b05:1869": true, // ASUS AURA Core
-	"0b05:1872": true, // ASUS AURA Addressable
-	"0b05:18a3": true, // ASUS AURA Addressable
-	"0b05:18a5": true, // ASUS AURA Addressable
-	"0b05:18f3": true, // ASUS AURA Motherboard
-	"0b05:1939": true, // ASUS AURA Motherboard
-	"0b05:19af": true, // ASUS AURA Motherboard
-	"0b05:1aa6": true, // ASUS AURA Motherboard
-	"0b05:1bed": true, // ASUS AURA Motherboard
-
-	// MSI Mystic Light controllers
-	"1462:1562": true, // MSI Mystic Light
-	"1462:1563": true, // MSI Mystic Light
-	"1462:1564": true, // MSI Mystic Light
-	"1462:1720": true, // MSI Mystic Light
-	"1462:7b12": true, // MSI Mystic Light
-	"1462:7b16": true, // MSI Mystic Light
-	"1462:7b17": true, // MSI Mystic Light
-	"1462:7b18": true, // MSI Mystic Light
-	"1462:7b50": true, // MSI Mystic Light
-	"1462:7b85": true, // MSI Mystic Light
-	"1462:7b92": true, // MSI Mystic Light
-	"1462:7b93": true, // MSI Mystic Light
-	"1462:7c02": true, // MSI Mystic Light
-	"1462:7c34": true, // MSI Mystic Light
-	"1462:7c35": true, // MSI Mystic Light
-	"1462:7c36": true, // MSI Mystic Light
-	"1462:7c37": true, // MSI Mystic Light
-	"1462:7c56": true, // MSI Mystic Light
-	"1462:7c59": true, // MSI Mystic Light
-	"1462:7c60": true, // MSI Mystic Light
-	"1462:7c67": true, // MSI Mystic Light
-	"1462:7c71": true, // MSI Mystic Light
-	"1462:7c73": true, // MSI Mystic Light
-	"1462:7c75": true, // MSI Mystic Light
-	"1462:7c76": true, // MSI Mystic Light
-	"1462:7c77": true, // MSI Mystic Light
-	"1462:7c79": true, // MSI Mystic Light
-	"1462:7c80": true, // MSI Mystic Light
-	"1462:7c81": true, // MSI Mystic Light
-	"1462:7c82": true, // MSI Mystic Light
-	"1462:7c83": true, // MSI Mystic Light
-	"1462:7c84": true, // MSI Mystic Light
-	"1462:7c86": true, // MSI Mystic Light
-	"1462:7c87": true, // MSI Mystic Light
-	"1462:7c89": true, // MSI Mystic Light
-	"1462:7c90": true, // MSI Mystic Light
-	"1462:7c91": true, // MSI Mystic Light
-	"1462:7c92": true, // MSI Mystic Light
-	"1462:7c94": true, // MSI Mystic Light
-	"1462:7c95": true, // MSI Mystic Light
-	"1462:7d03": true, // MSI Mystic Light
-	"1462:7d06": true, // MSI Mystic Light
-	"1462:7d09": true, // MSI Mystic Light
-	"1462:7d13": true, // MSI Mystic Light
-	"1462:7d17": true, // MSI Mystic Light
-	"1462:7d20": true, // MSI Mystic Light
-	"1462:7d25": true, // MSI Mystic Light
-	"1462:7d28": true, // MSI Mystic Light
-	"1462:7d29": true, // MSI Mystic Light
-	"1462:7d30": true, // MSI Mystic Light
-	"1462:7d32": true, // MSI Mystic Light
-	"1462:7d36": true, // MSI Mystic Light
-	"1462:7d38": true, // MSI Mystic Light
-	"1462:7d41": true, // MSI Mystic Light
-	"1462:7d42": true, // MSI Mystic Light
-	"1462:7d46": true, // MSI Mystic Light
-	"1462:7d50": true, // MSI Mystic Light
-	"1462:7d51": true, // MSI Mystic Light
-	"1462:7d52": true, // MSI Mystic Light
-	"1462:7d53": true, // MSI Mystic Light
-	"1462:7d54": true, // MSI Mystic Light
-	"1462:7d59": true, // MSI Mystic Light
-	"1462:7d67": true, // MSI Mystic Light
-	"1462:7d69": true, // MSI Mystic Light
-	"1462:7d70": true, // MSI Mystic Light
-	"1462:7d73": true, // MSI Mystic Light
-	"1462:7d75": true, // MSI Mystic Light
-	"1462:7d76": true, // MSI Mystic Light
-	"1462:7d78": true, // MSI Mystic Light
-
-	// Corsair - lighting nodes, commanders, and RGB controllers
-	"1b1c:0c0b": true, // Corsair Lighting Node Pro
-	"1b1c:0c10": true, // Corsair Commander Pro
-	"1b1c:0c1a": true, // Corsair Lighting Node Core
-	"1b1c:0c1c": true, // Corsair Commander Core
-	"1b1c:0c1d": true, // Corsair Commander Core
-	"1b1c:0c1e": true, // Corsair LS100 Lighting Kit
-	"1b1c:0c23": true, // Corsair LT100
-	"1b1c:0c2a": true, // Corsair Commander Core XT
-	"1b1c:0c32": true, // Corsair Commander Core 2
-	"1b1c:0c3c": true, // Corsair Commander Core
-	"1b1c:0c3d": true, // Corsair Commander Core
-	"1b1c:0c3e": true, // Corsair Commander Core
-	"1b1c:1d00": true, // Corsair 1000D Obsidian RGB
-	"1b1c:1d04": true, // Corsair SPEC OMEGA RGB
-
-	// NZXT - Hue, Smart Device, and RGB fan controllers
-	"1e71:2001": true, // NZXT Hue 2
-	"1e71:2002": true, // NZXT Hue 2 Ambient
-	"1e71:2005": true, // NZXT Hue 2 Motherboard
-	"1e71:2006": true, // NZXT Smart Device V2
-	"1e71:2009": true, // NZXT RGB Fan Controller
-	"1e71:200b": true, // NZXT Hue 2 Motherboard
-	"1e71:200d": true, // NZXT Smart Device V2.1
-	"1e71:200e": true, // NZXT RGB Fan Controller
-	"1e71:200f": true, // NZXT Smart Device V2.2
-	"1e71:2010": true, // NZXT RGB Fan Controller
-	"1e71:2011": true, // NZXT RGB Fan Controller
-	"1e71:2012": true, // NZXT RGB Controller
-	"1e71:2019": true, // NZXT RGB Fan Controller
-	"1e71:201b": true, // NZXT B650E Motherboard
-	"1e71:201f": true, // NZXT RGB Fan Controller
-	"1e71:2020": true, // NZXT RGB Fan Controller
-	"1e71:2021": true, // NZXT RGB Controller
-	"1e71:2022": true, // NZXT RGB Fan Controller
-
-	// ASRock Polychrome - motherboard RGB controllers
-	"26ce:01a2": true, // ASRock LED Controller (Polychrome USB)
-
-	// Razer - standalone Chroma controllers (not peripherals)
-	"1532:0f07": true, // Razer Chroma Mug Holder
-	"1532:0f08": true, // Razer Base Station Chroma
-	"1532:0f09": true, // Razer Chroma HDK
-	"1532:0f0d": true, // Razer Laptop Stand Chroma
-	"1532:0f0e": true, // Razer Chroma Case Fan Controller
-	"1532:0f1a": true, // Razer Core X Chroma
-	"1532:0f1f": true, // Razer Chroma Addressable RGB Controller
-	"1532:0f20": true, // Razer Base Station V2 Chroma
-}
-
-// reclassifyMiscHID catches HID devices that aren't really input devices.
-// "Chroma", "Aura", and "Mystic Light" across keyboards, mice, and
-// actual RGB controllers.
-func (s *GHWScanner) reclassifyMiscHID(current domain.DeviceClass, vendorID, productID string) domain.DeviceClass {
-	vidpid := vendorID + ":" + productID
-	if rgbControllerDevices[vidpid] {
-		return domain.DeviceClassLighting
-	}
 	return current
 }
 
@@ -795,175 +667,5 @@ func (s *GHWScanner) reclassifyPortableDevice(current domain.DeviceClass, vendor
 		}
 	}
 
-	return current
-}
-
-// upsDevices contains known UPS VID:PID pairs from NUT driver tables.
-var upsDevices = map[string]bool{
-	// APC / Schneider Electric
-	"051d:0000": true,
-	"051d:0002": true,
-	"051d:0003": true,
-	"051d:0004": true,
-	"051d:0005": true,
-	// Belkin
-	"050d:0375": true,
-	"050d:0551": true,
-	"050d:0750": true,
-	"050d:0751": true,
-	"050d:0900": true,
-	"050d:0910": true,
-	"050d:0912": true,
-	"050d:0980": true,
-	"050d:0f51": true,
-	"050d:1100": true,
-	// CyberPower
-	"0764:0005": true,
-	"0764:0501": true,
-	"0764:0601": true,
-	// STMicroelectronics (CyberPower/generic UPS chipset)
-	"0483:a430": true,
-	"0483:a113": true,
-	// Delta
-	"05dd:041b": true,
-	"05dd:a011": true,
-	"05dd:a0a0": true,
-	// EcoFlow
-	"3746:ffff": true,
-	// Ever
-	"2e51:ffff": true,
-	"2e51:0000": true,
-	// iDowell
-	"075d:0300": true,
-	// Legrand
-	"1cb0:0032": true,
-	"1cb0:0038": true,
-	// Liebert / Phoenixtec
-	"10af:0000": true,
-	"10af:0001": true,
-	"10af:0002": true,
-	"10af:0004": true,
-	"10af:0008": true,
-	// Phoenixtec
-	"06da:0002": true,
-	"06da:0003": true,
-	"06da:0004": true,
-	"06da:0005": true,
-	"06da:0201": true,
-	"06da:0601": true,
-	"06da:ffff": true,
-	// MGE / Eaton
-	"0463:0001": true,
-	"0463:ffff": true,
-	// Dell (UPS via Eaton OEM)
-	"047c:ffff": true,
-	// Powerware / Eaton
-	"0592:0002": true,
-	"0592:0004": true,
-	// HP / HPE
-	"03f0:0001": true,
-	"03f0:1f01": true,
-	"03f0:1f02": true,
-	"03f0:1f06": true,
-	"03f0:1f08": true,
-	"03f0:1f09": true,
-	"03f0:1f0a": true,
-	"03f0:1fe0": true,
-	"03f0:1fe1": true,
-	"03f0:1fe2": true,
-	"03f0:1fe3": true,
-	"03f0:1fe5": true,
-	"03f0:1fe6": true,
-	"03f0:1fe7": true,
-	"03f0:1fe8": true,
-	// AEG
-	"2b2d:ffff": true,
-	// IBM
-	"04b3:0001": true,
-	// KSTAR
-	"09d6:0001": true,
-	// Microchip / OpenUPS
-	"04d8:d004": true,
-	"04d8:d005": true,
-	// Powercom
-	"0d9f:0001": true,
-	"0d9f:0004": true,
-	"0d9f:00a2": true,
-	"0d9f:00a3": true,
-	"0d9f:00a4": true,
-	"0d9f:00a5": true,
-	"0d9f:00a6": true,
-	// PowerVar
-	"4234:0001": true,
-	"4234:0002": true,
-	// Salicru
-	"2e66:0101": true,
-	"2e66:0201": true,
-	"2e66:0202": true,
-	"2e66:0203": true,
-	"2e66:0300": true,
-	"2e66:0302": true,
-	// Tripp Lite
-	"09ae:0001": true,
-	"09ae:1003": true,
-	"09ae:1007": true,
-	"09ae:1008": true,
-	"09ae:1009": true,
-	"09ae:1010": true,
-	"09ae:1330": true,
-	"09ae:2005": true,
-	"09ae:2007": true,
-	"09ae:2008": true,
-	"09ae:2009": true,
-	"09ae:2010": true,
-	"09ae:2011": true,
-	"09ae:2012": true,
-	"09ae:2013": true,
-	"09ae:2014": true,
-	"09ae:3008": true,
-	"09ae:3009": true,
-	"09ae:3010": true,
-	"09ae:3011": true,
-	"09ae:3012": true,
-	"09ae:3013": true,
-	"09ae:3014": true,
-	"09ae:3015": true,
-	"09ae:3016": true,
-	"09ae:3024": true,
-	"09ae:4001": true,
-	"09ae:4002": true,
-	"09ae:4003": true,
-	"09ae:4004": true,
-	"09ae:4005": true,
-	"09ae:4006": true,
-	"09ae:4007": true,
-	"09ae:4008": true,
-	// Riello / Cypress Semiconductor
-	"04b4:5500": true,
-	// Cypress Semiconductor (generic UPS chipset)
-	"0665:5161": true,
-	// Lakeview Research (generic UPS chipset)
-	"0925:1234": true,
-	// Unitek
-	"0f03:0001": true,
-	// GE
-	"14f0:00c9": true,
-	// Arduino (NUT-compatible UPS controller)
-	"2341:0036": true,
-	"2341:8036": true,
-	"2a03:0036": true,
-	"2a03:8036": true,
-	"2a03:0040": true,
-	"2a03:8040": true,
-	// Sysgration
-	"05b8:0000": true,
-}
-
-// reclassifyUPS moves known UPS devices from Input to Power.
-func (s *GHWScanner) reclassifyUPS(current domain.DeviceClass, vendorID, productID string) domain.DeviceClass {
-	vidpid := vendorID + ":" + productID
-	if upsDevices[vidpid] {
-		return domain.DeviceClassPower
-	}
 	return current
 }

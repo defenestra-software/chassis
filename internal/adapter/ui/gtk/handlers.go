@@ -469,6 +469,10 @@ func (g *GtkUI) getIconName(node *domain.DeviceNode) string {
 		return "network-server-symbolic"
 	case domain.DeviceClassInput:
 		return g.getInputIcon(node)
+	case domain.DeviceClassGameController:
+		return "input-gaming-symbolic"
+	case domain.DeviceClassVRHeadset:
+		return "video-display-symbolic"
 	case domain.DeviceClassWireless:
 		return "network-wireless-symbolic"
 	case domain.DeviceClassCamera:

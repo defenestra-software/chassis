@@ -3,25 +3,27 @@ package domain
 type InterfaceType string
 
 const (
-	InterfaceGraphics  InterfaceType = "graphics"
-	InterfaceSensor    InterfaceType = "sensor"
-	InterfaceStorage   InterfaceType = "storage"
-	InterfaceNetwork   InterfaceType = "network"
-	InterfaceDisplay   InterfaceType = "display"
-	InterfaceAudio     InterfaceType = "audio"
-	InterfaceInput     InterfaceType = "input"
-	InterfaceSerial    InterfaceType = "serial"
-	InterfacePower     InterfaceType = "power"
-	InterfaceLighting  InterfaceType = "lighting"
-	InterfaceUSB       InterfaceType = "usb"
-	InterfaceProcessor InterfaceType = "processor"
-	InterfaceMemory    InterfaceType = "memory"
-	InterfaceCamera    InterfaceType = "camera"
-	InterfaceSecurity  InterfaceType = "security"
-	InterfacePortable  InterfaceType = "portable"
-	InterfaceDebug     InterfaceType = "debug"
-	InterfaceSystem    InterfaceType = "system"
-	InterfaceOther     InterfaceType = "other"
+	InterfaceGraphics       InterfaceType = "graphics"
+	InterfaceSensor         InterfaceType = "sensor"
+	InterfaceStorage        InterfaceType = "storage"
+	InterfaceNetwork        InterfaceType = "network"
+	InterfaceDisplay        InterfaceType = "display"
+	InterfaceAudio          InterfaceType = "audio"
+	InterfaceInput          InterfaceType = "input"
+	InterfaceGameController InterfaceType = "game_controller"
+	InterfaceSerial         InterfaceType = "serial"
+	InterfacePower          InterfaceType = "power"
+	InterfaceLighting       InterfaceType = "lighting"
+	InterfaceUSB            InterfaceType = "usb"
+	InterfaceProcessor      InterfaceType = "processor"
+	InterfaceMemory         InterfaceType = "memory"
+	InterfaceCamera         InterfaceType = "camera"
+	InterfaceSecurity       InterfaceType = "security"
+	InterfacePortable       InterfaceType = "portable"
+	InterfaceVRHeadset      InterfaceType = "vr_headset"
+	InterfaceDebug          InterfaceType = "debug"
+	InterfaceSystem         InterfaceType = "system"
+	InterfaceOther          InterfaceType = "other"
 )
 
 type DeviceInterface struct {
@@ -61,6 +63,8 @@ func InterfaceTypeToCategory(t InterfaceType) DeviceClass {
 		return DeviceClassAudio
 	case InterfaceInput:
 		return DeviceClassInput
+	case InterfaceGameController:
+		return DeviceClassGameController
 	case InterfaceSerial:
 		return DeviceClassSerial
 	case InterfacePower:
@@ -79,6 +83,8 @@ func InterfaceTypeToCategory(t InterfaceType) DeviceClass {
 		return DeviceClassSecurity
 	case InterfacePortable:
 		return DeviceClassPortable
+	case InterfaceVRHeadset:
+		return DeviceClassVRHeadset
 	case InterfaceDebug:
 		return DeviceClassDebug
 	case InterfaceSystem:
