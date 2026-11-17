@@ -22,6 +22,12 @@ const shortcutsXML = `<?xml version="1.0" encoding="UTF-8"?>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
+                <property name="title">Rescan devices</property>
+                <property name="accelerator">F5 &lt;Control&gt;r</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
                 <property name="title">Keyboard shortcuts</property>
                 <property name="accelerator">&lt;Control&gt;question</property>
               </object>

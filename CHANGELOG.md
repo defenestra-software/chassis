@@ -2,15 +2,19 @@
 
 ## Unreleased
 
-- Added a per-device USB list (`assets/usb_ids.json`) that sets the name and class of known devices by vendor and product ID
-- Added Wooting keyboards, ZSA Moonlander, ErgoDox EZ, and Framework Laptop 16 input modules to the USB list
-- Added a Game Controllers category for gamepads, wheels, and joysticks, split out of Input Devices
-- Added a VR Headsets category with HTC Vive, Valve SteamVR, Bigscreen, and PlayStation VR hardware
-- Moved the RGB controller, UPS, and gamepad tables into the USB list
-- Fixed DualSense and DualShock controllers showing up as audio devices
-- Fixed Arduino Leonardo showing up as a UPS
-- Fixed every HID device with a pid.codes vendor ID (`1209`) showing up as a security key
-- Fixed listed keyboards with a WebUSB interface showing up as debug devices
+- Added a per-device USB list (`assets/usb_ids.json`) that sets the name and class of known devices by vendor and product ID.
+- Added Wooting keyboards, ZSA Moonlander, ErgoDox EZ, and Framework Laptop 16 input modules to the USB list.
+- Added a Game Controllers category for gamepads, wheels, and joysticks, split out of Input Devices.
+- Added a VR Headsets category with HTC Vive, Valve SteamVR, Bigscreen, and PlayStation VR hardware.
+- Moved the RGB controller, UPS, and gamepad tables into the USB list.
+- Moved Rescan Devices from the sidebar header into the menu and added `F5` / `Ctrl+R` for it.
+- Moved the search button into the sidebar header.
+- Removed the Forum link from the menu and the About dialog.
+- Fixed the window button layout being forced.
+- Fixed DualSense and DualShock controllers showing up as audio devices.
+- Fixed Arduino Leonardo showing up as a UPS.
+- Fixed every HID device with a pid.codes vendor ID (`1209`) showing up as a security key.
+- Fixed listed keyboards with a WebUSB interface showing up as debug devices.
 - Added `ListDevices` to the D-Bus interface to return the device tree as JSON, including GPU, storage, and system information without Serial numbers, MAC addresses, and other identifying fields.
 - Added `ListDevicesWithIdentifiers` to return the same tree with identifying fields after polkit authorization.
 

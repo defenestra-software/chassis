@@ -13,23 +13,16 @@ import (
 
 func (g *GtkUI) buildSidebarPage() *adw.NavigationPage {
 	headerBar := adw.NewHeaderBar()
-	headerBar.SetShowEndTitleButtons(false)
 
 	menuBtn := gtk.NewMenuButton()
 	menuBtn.SetIconName("open-menu-symbolic")
 	menuBtn.SetMenuModel(g.buildAppMenu())
 	headerBar.PackEnd(menuBtn)
 
-	refreshBtn := gtk.NewButtonFromIconName("view-refresh-symbolic")
-	refreshBtn.SetTooltipText("Rescan Devices")
-	refreshBtn.ConnectClicked(func() {
-		if g.onRefresh != nil {
-			go func() {
-				_ = g.onRefresh()
-			}()
-		}
-	})
-	headerBar.PackStart(refreshBtn)
+	g.searchBtn = gtk.NewToggleButton()
+	g.searchBtn.SetIconName("system-search-symbolic")
+	g.searchBtn.SetTooltipText("Search devices")
+	headerBar.PackStart(g.searchBtn)
 
 	contentBox := gtk.NewBox(gtk.OrientationVertical, 0)
 

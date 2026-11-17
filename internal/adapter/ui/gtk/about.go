@@ -16,12 +16,11 @@ func showAboutDialog(parent *gtklib.Window) {
 	about.SetDeveloperName("Defenestra, LLC")
 	about.SetCopyright("\u00a9 2026 Defenestra, LLC")
 	about.SetWebsite("https://defenestra.io/products/chassis/")
-	about.SetIssueURL("https://forum.defenestra.io/")
+	about.SetIssueURL("https://gitlab.com/defenestra-software/chassis/-/issues")
 	about.SetLicenseType(gtklib.LicenseGPL30)
 	about.SetComments("Device Manager for Linux")
 
 	about.AddLink("Wiki", "https://wiki.defenestra.io/")
-	about.AddLink("Forum", "https://forum.defenestra.io/")
 
 	about.SetDevelopers([]string{
 		"Defenestra, LLC https://defenestra.io",

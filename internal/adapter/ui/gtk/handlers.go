@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
 
 	"defenestra.io/chassis/internal/core/domain"
@@ -192,100 +191,6 @@ func (g *GtkUI) showChangeDriverDialog(node *domain.DeviceNode) {
 	dialog.Show()
 }
 
-func (g *GtkUI) showModesDialog(monitor *domain.Monitor) {
-	dialog := adw.NewDialog()
-	dialog.SetTitle(fmt.Sprintf("%s – Display Modes", monitor.FormattedName()))
-	dialog.SetContentWidth(400)
-	dialog.SetContentHeight(500)
-
-	headerBar := adw.NewHeaderBar()
-	headerBar.SetShowStartTitleButtons(false)
-	headerBar.SetShowEndTitleButtons(false)
-
-	closeBtn := gtk.NewButton()
-	closeBtn.SetIconName("window-close-symbolic")
-	closeBtn.AddCSSClass("flat")
-	closeBtn.ConnectClicked(func() { dialog.Close() })
-	headerBar.PackEnd(closeBtn)
-
-	listBox := gtk.NewListBox()
-	listBox.AddCSSClass("boxed-list")
-	listBox.SetSelectionMode(gtk.SelectionNone)
-
-	type resGroup struct {
-		key    string
-		width  uint16
-		height uint16
-		modes  []domain.DisplayMode
-	}
-	byRes := make(map[string]*resGroup)
-	for _, m := range monitor.Modes {
-		key := fmt.Sprintf("%dx%d", m.Width, m.Height)
-		if _, ok := byRes[key]; !ok {
-			byRes[key] = &resGroup{key: key, width: m.Width, height: m.Height}
-		}
-		byRes[key].modes = append(byRes[key].modes, m)
-	}
-	var resolutions []*resGroup
-	for _, rg := range byRes {
-		resolutions = append(resolutions, rg)
-	}
-	sort.Slice(resolutions, func(i, j int) bool {
-		return int(resolutions[i].width)*int(resolutions[i].height) >
-			int(resolutions[j].width)*int(resolutions[j].height)
-	})
-
-	for _, res := range resolutions {
-		row := adw.NewActionRow()
-		row.SetTitle(res.key)
-		var rates []string
-		for _, m := range res.modes {
-			r := fmt.Sprintf("%d Hz", m.RefreshRate)
-			if m.IsCurrent {
-				r += " (current)"
-			}
-			rates = append(rates, r)
-		}
-		row.SetSubtitle(strings.Join(rates, ", "))
-		for _, m := range res.modes {
-			if m.IsCurrent {
-				icon := gtk.NewImageFromIconName("emblem-ok-symbolic")
-				icon.AddCSSClass("success")
-				row.AddPrefix(icon)
-				break
-			}
-		}
-		listBox.Append(row)
-	}
-
-	scroll := gtk.NewScrolledWindow()
-	scroll.SetChild(listBox)
-	scroll.SetVExpand(true)
-	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
-
-	infoLabel := gtk.NewLabel(fmt.Sprintf("%d display modes available", len(monitor.Modes)))
-	infoLabel.AddCSSClass("dim-label")
-	infoLabel.SetMarginTop(12)
-	infoLabel.SetMarginBottom(6)
-
-	contentBox := gtk.NewBox(gtk.OrientationVertical, 0)
-	contentBox.Append(infoLabel)
-	if monitor.WidthMM > 0 && monitor.HeightMM > 0 {
-		physLabel := gtk.NewLabel(fmt.Sprintf("Physical size: %d × %d mm", monitor.WidthMM, monitor.HeightMM))
-		physLabel.AddCSSClass("dim-label")
-		physLabel.SetMarginBottom(12)
-		contentBox.Append(physLabel)
-	}
-	contentBox.Append(scroll)
-
-	toolbarView := adw.NewToolbarView()
-	toolbarView.AddTopBar(headerBar)
-	toolbarView.SetContent(contentBox)
-
-	dialog.SetChild(toolbarView)
-	dialog.Present(&g.window.Window)
-}
-
 func (g *GtkUI) saveVBIOS(pciAddress string) {
 	if g.onAction == nil {
 		return
@@ -329,6 +234,10 @@ func (g *GtkUI) saveVBIOS(pciAddress string) {
 func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	menu := gio.NewMenu()
 
+	deviceSection := gio.NewMenu()
+	deviceSection.Append("Rescan Devices", "win.rescan")
+	menu.AppendSection("", deviceSection)
+
 	if flatpak.InFlatpakEnvironment() {
 		setupSection := gio.NewMenu()
 		setupSection.Append("Setup Service…", "win.setup")
@@ -338,10 +247,16 @@ func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	helpSection := gio.NewMenu()
 	helpSection.Append("Keyboard Shortcuts", "win.shortcuts")
 	helpSection.Append("Wiki", "win.wiki")
-	helpSection.Append("Forum", "win.forum")
 	helpSection.Append("About", "win.about")
 	menu.AppendSection("", helpSection)
 
+	g.registerAction("rescan", func() {
+		if g.onRefresh != nil {
+			go func() {
+				_ = g.onRefresh()
+			}()
+		}
+	})
 	g.registerAction("shortcuts", func() {
 		showShortcutsDialog(&g.window.Window)
 	})
@@ -369,9 +284,6 @@ func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	g.registerAction("wiki", func() {
 		gtk.ShowURI(nil, "https://wiki.defenestra.io/", 0)
 	})
-	g.registerAction("forum", func() {
-		gtk.ShowURI(nil, "https://forum.defenestra.io/", 0)
-	})
 	g.registerAction("quit", func() {
 		g.window.Close()
 	})
@@ -384,6 +296,7 @@ func (g *GtkUI) buildAppMenu() gio.MenuModeller {
 	g.app.SetAccelsForAction("win.shortcuts", []string{"<Control>question"})
 	g.app.SetAccelsForAction("win.quit", []string{"<Control>q"})
 	g.app.SetAccelsForAction("win.search", []string{"<Control>f"})
+	g.app.SetAccelsForAction("win.rescan", []string{"F5", "<Control>r"})
 
 	return menu
 }

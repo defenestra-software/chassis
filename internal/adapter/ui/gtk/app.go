@@ -77,10 +77,6 @@ func (g *GtkUI) Run() error {
 	g.app = adw.NewApplication("io.defenestra.Chassis", gio.ApplicationFlagsNone)
 
 	g.app.ConnectActivate(func() {
-		if s := gtk.SettingsGetDefault(); s != nil {
-			s.SetObjectProperty("gtk-decoration-layout", ":minimize,maximize,close")
-		}
-
 		g.setupUI()
 		g.window.Show()
 

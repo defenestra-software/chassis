@@ -35,7 +35,7 @@ If you're planning a larger change, open an issue first so we can discuss the ap
 
 ## Reporting Bugs
 
-Open an issue on the repository or post on the [forum](https://forum.defenestra.io/).
+Open an issue on the repository.
 
 ## License
 

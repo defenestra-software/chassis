@@ -17,11 +17,6 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 	headerBar := adw.NewHeaderBar()
 	kit.PatchHeaderBar(headerBar, g.window)
 
-	g.searchBtn = gtk.NewToggleButton()
-	g.searchBtn.SetIconName("system-search-symbolic")
-	g.searchBtn.SetTooltipText("Search devices")
-	headerBar.PackEnd(g.searchBtn)
-
 	g.searchEntry = gtk.NewSearchEntry()
 	g.searchEntry.SetPlaceholderText("Search devices…")
 	g.searchEntry.SetHExpand(true)
@@ -34,6 +29,8 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 	g.searchBtn.ConnectToggled(func() {
 		g.searchBar.SetSearchMode(g.searchBtn.Active())
 		if g.searchBtn.Active() {
+			g.navView.PopToPage(g.listPage)
+			g.splitView.SetShowContent(true)
 			g.searchEntry.GrabFocus()
 		}
 	})
