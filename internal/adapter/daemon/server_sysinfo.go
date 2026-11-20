@@ -14,8 +14,23 @@ import (
 	"defenestra.io/chassis/internal/core/port"
 )
 
+// ReadSystemInfo omits the board serial and memory module serials.
 func (s *Server) ReadSystemInfo() (string, *dbus.Error) {
 	s.logger.Info("system info read requested")
+
+	redacted, err := withoutIdentifiers(readSystemInfo(s.logger))
+	if err != nil {
+		return "", dbus.MakeFailedError(err)
+	}
+	return redacted, nil
+}
+
+func (s *Server) ReadSystemInfoWithIdentifiers(sender dbus.Sender) (string, *dbus.Error) {
+	s.logger.Info("system info with identifiers requested")
+
+	if dberr := s.authorize(sender, actionReadIdentifiers); dberr != nil {
+		return "", dberr
+	}
 	return readSystemInfo(s.logger), nil
 }
 
@@ -187,7 +202,28 @@ func (s *Server) DumpVBIOS(sender dbus.Sender, pciAddress string) ([]byte, *dbus
 	return data, nil
 }
 
+// ReadSMART omits the drive serial number, WWN and NVMe unique IDs.
 func (s *Server) ReadSMART(blockDevice string) (string, *dbus.Error) {
+	output, dberr := s.readSMART(blockDevice)
+	if dberr != nil {
+		return "", dberr
+	}
+
+	redacted, err := withoutIdentifiers(output)
+	if err != nil {
+		return "", dbus.MakeFailedError(err)
+	}
+	return redacted, nil
+}
+
+func (s *Server) ReadSMARTWithIdentifiers(sender dbus.Sender, blockDevice string) (string, *dbus.Error) {
+	if dberr := s.authorize(sender, actionReadIdentifiers); dberr != nil {
+		return "", dberr
+	}
+	return s.readSMART(blockDevice)
+}
+
+func (s *Server) readSMART(blockDevice string) (string, *dbus.Error) {
 	s.logger.Info("SMART read requested", "device", blockDevice)
 
 	if !blockDeviceRegex.MatchString(blockDevice) {

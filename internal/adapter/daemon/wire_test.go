@@ -101,6 +101,13 @@ func TestEncodeDeviceTreeIdentifiers(t *testing.T) {
 			ID:          "pci:0000:04:00.0",
 			NetworkInfo: &domain.NetworkInfo{InterfaceName: "wlan0", MACAddress: "aa:bb:cc:dd:ee:ff", SSID: "home"},
 			StorageInfo: &domain.StorageInfo{Model: "SN850", Serial: "2309A", SMART: &domain.SMARTData{Healthy: true, RawJSON: "{\"serial_number\":\"2309A\"}"}},
+		}, {
+			ID:          "usb:1-2",
+			DevicePaths: []string{"/dev/video0", "/dev/v4l/by-id/usb-Cam_SN0001-video-index0", "/dev/v4l/by-path/pci-0000:00:14.0-usb-0:2:1.0-video-index0"},
+			Interfaces: []*domain.DeviceInterface{{
+				Type:        domain.InterfaceSerial,
+				DevicePaths: []string{"/dev/ttyACM0", "/dev/serial/by-id/usb-Board_SN0002-if00"},
+			}},
 		}},
 	}
 
@@ -113,7 +120,7 @@ func TestEncodeDeviceTreeIdentifiers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, key := range []string{`"serial_number":"M80-ABC"`, `"mac_address"`, `"ssid"`, `"serial":"2309A"`, `"raw_json"`} {
+	for _, key := range []string{`"serial_number":"M80-ABC"`, `"mac_address"`, `"ssid"`, `"serial":"2309A"`, `"raw_json"`, `SN0001`, `SN0002`} {
 		if !strings.Contains(string(full), key) {
 			t.Errorf("full output missing %s", key)
 		}
@@ -121,7 +128,7 @@ func TestEncodeDeviceTreeIdentifiers(t *testing.T) {
 			t.Errorf("redacted output still has %s", key)
 		}
 	}
-	for _, key := range []string{`"vendor":"ASRock"`, `"interface_name":"wlan0"`, `"model":"SN850"`, `"healthy":true`} {
+	for _, key := range []string{`"vendor":"ASRock"`, `"interface_name":"wlan0"`, `"model":"SN850"`, `"healthy":true`, `"/dev/video0"`, `/dev/v4l/by-path/`, `"/dev/ttyACM0"`} {
 		if !strings.Contains(string(redacted), key) {
 			t.Errorf("redacted output lost %s", key)
 		}

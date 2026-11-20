@@ -92,7 +92,7 @@ func (c *Client) Ping() error {
 
 func (c *Client) ReadSMART(blockDevice string) (string, error) {
 	var jsonData string
-	err := c.obj.Call(dbusInterface+".ReadSMART", 0, blockDevice).Store(&jsonData)
+	err := c.obj.Call(dbusInterface+".ReadSMARTWithIdentifiers", 0, blockDevice).Store(&jsonData)
 	if err != nil {
 		return "", fmt.Errorf("read SMART: %w", err)
 	}
@@ -101,7 +101,7 @@ func (c *Client) ReadSMART(blockDevice string) (string, error) {
 
 func (c *Client) ReadSystemInfo() (string, error) {
 	var jsonData string
-	err := c.obj.Call(dbusInterface+".ReadSystemInfo", 0).Store(&jsonData)
+	err := c.obj.Call(dbusInterface+".ReadSystemInfoWithIdentifiers", 0).Store(&jsonData)
 	if err != nil {
 		return "", fmt.Errorf("read system info: %w", err)
 	}

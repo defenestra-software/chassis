@@ -89,7 +89,14 @@ func (s *Server) Start() error {
 						{Name: "block_device", Type: "s", Direction: "in"},
 						{Name: "json_data", Type: "s", Direction: "out"},
 					}},
+					{Name: "ReadSMARTWithIdentifiers", Args: []introspect.Arg{
+						{Name: "block_device", Type: "s", Direction: "in"},
+						{Name: "json_data", Type: "s", Direction: "out"},
+					}},
 					{Name: "ReadSystemInfo", Args: []introspect.Arg{
+						{Name: "json_data", Type: "s", Direction: "out"},
+					}},
+					{Name: "ReadSystemInfoWithIdentifiers", Args: []introspect.Arg{
 						{Name: "json_data", Type: "s", Direction: "out"},
 					}},
 					{Name: "DumpVBIOS", Args: []introspect.Arg{

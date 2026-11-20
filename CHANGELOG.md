@@ -6,6 +6,10 @@
 - Added Wooting keyboards, ZSA Moonlander, ErgoDox EZ, and Framework Laptop 16 input modules to the USB list.
 - Added a Game Controllers category for gamepads, wheels, and joysticks, split out of Input Devices.
 - Added a VR Headsets category with HTC Vive, Valve SteamVR, Bigscreen, and PlayStation VR hardware.
+- Added `ListDevices` to the D-Bus interface to return the device tree as JSON, including GPU, storage, and system information without serial numbers, MAC addresses, `/dev/*/by-id` paths, and other identifying fields.
+- Added `ListDevicesWithIdentifiers`, `ReadSystemInfoWithIdentifiers`, and `ReadSMARTWithIdentifiers` to return the full data with identifying fields.
+- Added the polkit action `read-identifiers` for the `WithIdentifiers` methods; an active local session is not asked for a password.
+- Changed `ReadSystemInfo` and `ReadSMART` to leave out serial numbers, WWN, and NVMe unique IDs.
 - Moved the RGB controller, UPS, and gamepad tables into the USB list.
 - Moved Rescan Devices from the sidebar header into the menu and added `F5` / `Ctrl+R` for it.
 - Moved the search button into the sidebar header.
@@ -15,8 +19,6 @@
 - Fixed Arduino Leonardo showing up as a UPS.
 - Fixed every HID device with a pid.codes vendor ID (`1209`) showing up as a security key.
 - Fixed listed keyboards with a WebUSB interface showing up as debug devices.
-- Added `ListDevices` to the D-Bus interface to return the device tree as JSON, including GPU, storage, and system information without Serial numbers, MAC addresses, and other identifying fields.
-- Added `ListDevicesWithIdentifiers` to return the same tree with identifying fields after polkit authorization.
 
 ## v0.1.6
 - Added support for Logitech F310

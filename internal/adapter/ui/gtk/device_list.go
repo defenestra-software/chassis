@@ -35,6 +35,11 @@ func (g *GtkUI) buildDeviceListPage() *adw.NavigationPage {
 		}
 	})
 
+	// Esc closes the bar without going through the button.
+	g.searchBar.NotifyProperty("search-mode-enabled", func() {
+		g.searchBtn.SetActive(g.searchBar.SearchMode())
+	})
+
 	g.searchEntry.ConnectSearchChanged(func() {
 		g.onSearchChanged(g.searchEntry.Text())
 	})

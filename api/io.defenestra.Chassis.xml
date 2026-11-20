@@ -26,6 +26,10 @@
       <arg name="reply" type="s" direction="out"/>
     </method>
 
+    <!-- ListDevices, ReadSMART and ReadSystemInfo leave out identifiers:
+         serial numbers, MAC addresses, SSID, WWN and /dev/*/by-id paths.
+         The WithIdentifiers methods return everything and check the polkit
+         action io.defenestra.Chassis.read-identifiers. -->
     <method name="ListDevices">
       <arg name="json_data" type="s" direction="out"/>
     </method>
@@ -39,7 +43,16 @@
       <arg name="json_data" type="s" direction="out"/>
     </method>
 
+    <method name="ReadSMARTWithIdentifiers">
+      <arg name="block_device" type="s" direction="in"/>
+      <arg name="json_data" type="s" direction="out"/>
+    </method>
+
     <method name="ReadSystemInfo">
+      <arg name="json_data" type="s" direction="out"/>
+    </method>
+
+    <method name="ReadSystemInfoWithIdentifiers">
       <arg name="json_data" type="s" direction="out"/>
     </method>
 

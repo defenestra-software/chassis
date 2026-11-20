@@ -51,6 +51,10 @@ func (e wireEncoder) value(v reflect.Value) any {
 			if fv.Kind() == reflect.Pointer && fv.IsNil() {
 				continue
 			}
+			if !e.withIdentifiers && f.Name == "DevicePaths" {
+				out[snakeCase(f.Name)] = withoutByIDPaths(fv)
+				continue
+			}
 			out[snakeCase(f.Name)] = e.value(fv)
 		}
 		return out
@@ -69,6 +73,16 @@ func (e wireEncoder) value(v reflect.Value) any {
 		}
 		return v.Interface()
 	}
+}
+
+func withoutByIDPaths(paths reflect.Value) []any {
+	out := []any{}
+	for i := 0; i < paths.Len(); i++ {
+		if p := paths.Index(i).String(); !strings.Contains(p, "/by-id/") {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // Acronyms stay together, including a single trailing lowercase letter (PCIe, MHz).
