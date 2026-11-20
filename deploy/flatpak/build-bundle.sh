@@ -117,13 +117,13 @@ fi
 # Install dependencies if requested
 if [ "$INSTALL_DEPS" = true ]; then
     log "Installing Flatpak SDK and runtime..."
-    flatpak install -y flathub org.gnome.Platform//49 org.gnome.Sdk//49 org.freedesktop.Sdk.Extension.golang//24.08 || true
+    flatpak install -y flathub org.gnome.Platform//51 org.gnome.Sdk//51 org.freedesktop.Sdk.Extension.golang//26.08 || true
 fi
 
 # Check for required runtime
-if ! flatpak info org.gnome.Platform//49 &> /dev/null; then
-    error "GNOME Platform 49 not installed. Run with -d to install dependencies, or:
-    flatpak install flathub org.gnome.Platform//49 org.gnome.Sdk//49"
+if ! flatpak info org.gnome.Platform//51 &> /dev/null; then
+    error "GNOME Platform 51 not installed. Run with -d to install dependencies, or:
+    flatpak install flathub org.gnome.Platform//51 org.gnome.Sdk//51"
 fi
 
 # Ensure output directory exists

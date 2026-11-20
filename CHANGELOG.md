@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the Flatpak runtime to GNOME 51.
+
 ## [0.2.0] - 2026-11-20
 
 ### Added
