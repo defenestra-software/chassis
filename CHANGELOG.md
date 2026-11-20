@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## [Unreleased]
+
+### Added
 
 - Added a per-device USB list (`assets/usb_ids.json`) that sets the name and class of known devices by vendor and product ID.
 - Added Wooting keyboards, ZSA Moonlander, ErgoDox EZ, and Framework Laptop 16 input modules to the USB list.
@@ -9,49 +11,91 @@
 - Added `ListDevices` to the D-Bus interface to return the device tree as JSON, including GPU, storage, and system information without serial numbers, MAC addresses, `/dev/*/by-id` paths, and other identifying fields.
 - Added `ListDevicesWithIdentifiers`, `ReadSystemInfoWithIdentifiers`, and `ReadSMARTWithIdentifiers` to return the full data with identifying fields.
 - Added the polkit action `read-identifiers` for the `WithIdentifiers` methods; an active local session is not asked for a password.
+
+### Changed
+
 - Changed `ReadSystemInfo` and `ReadSMART` to leave out serial numbers, WWN, and NVMe unique IDs.
 - Moved the RGB controller, UPS, and gamepad tables into the USB list.
 - Moved Rescan Devices from the sidebar header into the menu and added `F5` / `Ctrl+R` for it.
 - Moved the search button into the sidebar header.
+
+### Removed
+
 - Removed the Forum link from the menu and the About dialog.
+
+### Fixed
+
 - Fixed the window button layout being forced.
 - Fixed DualSense and DualShock controllers showing up as audio devices.
 - Fixed Arduino Leonardo showing up as a UPS.
 - Fixed every HID device with a pid.codes vendor ID (`1209`) showing up as a security key.
 - Fixed listed keyboards with a WebUSB interface showing up as debug devices.
 
-## v0.1.6
+## [0.1.6] - 2026-08-25
+
+### Added
+
 - Added support for Logitech F310
 - Added support for Stadia controllers USB and BLE interfaces
 
-## v0.1.5
-- Fixed D-Bus activation issue that resulted in the daemon not responding on first launch 
+## [0.1.5] - 2026-07-23
 
-## v0.1.4
+### Fixed
+
+- Fixed D-Bus activation issue that resulted in the daemon not responding on first launch
+
+## [0.1.4] - 2026-07-08
+
+### Added
+
+- Added PolicyKit policies on root operation
+
+### Fixed
+
 - Fixed memory size inconsistencies
 - Fixed race condition in readLoop
 - Fixed CHASSIS_DEBUG variable from being enabled unless actually set to true
 - Fixed detail page refresh issue after operation
-- Added PolicyKit policies on root operation
 
-## v0.1.3
+## [0.1.3] - 2026-05-11
+
+### Added
+
 - Added VirtIO device classification
+
+### Changed
+
 - Updated to go-flatbridge v0.0.4 to fix flatbox false positive detection
 - Hid service setup button on RPM installations
 
-## v0.1.2
+## [0.1.2] - 2026-05-10
+
+### Added
+
 - Added ASRock AMD Radeon RX 9070 XT Steel Legend 16GB for GPU classification
 - Added ASRock LED Controller (Polychrome RGB)
 - Added RPM build
 
-## v0.1.1
-- Bugfix misclassification of ASUS AURA LED Controller
-- Bugfix misclassification of Cyberpower and other UPS
+## [0.1.1] - 2026-04-06
+
+### Added
+
 - Added battery information using UPower to the power device details page with live monitoring
+
+### Changed
+
 - Clamped root device pages to make the appearance more unified
 - Enable system service to be optional and skipped if the user does not want to install it.
 
-## v0.1.0
+### Fixed
+
+- Bugfix misclassification of ASUS AURA LED Controller
+- Bugfix misclassification of Cyberpower and other UPS
+
+## [0.1.0] - 2026-04-06
+
+### Added
+
 - PCI and USB device scanning with full bus topology
 - GPU details: VRAM, clocks, PCIe link speed/width, VBIOS version, VRAM vendor
 - Display and monitor info from EDID: model, resolution, refresh rate, physical size

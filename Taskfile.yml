@@ -101,6 +101,22 @@ tasks:
       - go mod download
       - go mod tidy
 
+  tag:
+    desc: Tag a release (task tag VERSION=x.y.z)
+    cmds:
+      - ./{{.DEPLOY_DIR}}/scripts/release-tag.sh {{.VERSION}}
+
+  release:check:
+    desc: Verify HEAD is a clean tag matching CHANGELOG.md
+    cmds:
+      - ./{{.DEPLOY_DIR}}/scripts/release-check.sh
+
+  release:notes:
+    desc: Write CHANGELOG.md notes for the current tag to dist/release-notes.md
+    cmds:
+      - mkdir -p {{.DIST_DIR}}
+      - ./{{.DEPLOY_DIR}}/scripts/changelog.sh notes {{.VERSION}} > {{.DIST_DIR}}/release-notes.md
+
   flatpak:build:
     desc: Build Flatpak bundle
     cmds:

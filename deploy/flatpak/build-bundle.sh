@@ -134,17 +134,14 @@ log "  App ID:  $APP_ID"
 log "  Version: $VERSION"
 log "  Output:  $BUNDLE_PATH"
 
-# Copy metainfo to dist/ with the current version and date stamp
+# Metainfo for the manifest, with <releases> extracted from CHANGELOG.md.
 METAINFO_SRC="${SCRIPT_DIR}/../share/metainfo/${APP_ID}.metainfo.xml"
 METAINFO_OUT="${OUTPUT_DIR}/${APP_ID}.metainfo.xml"
-if [ -f "$METAINFO_SRC" ]; then
-    cp "$METAINFO_SRC" "$METAINFO_OUT"
-    if [ "$VERSION" != "latest" ]; then
-        TODAY=$(date '+%Y-%m-%d')
-        sed -i "s/<release version=\"[^\"]*\" date=\"[^\"]*\">/<release version=\"${VERSION}\" date=\"${TODAY}\">/" "$METAINFO_OUT"
-        log "Updated metainfo version to ${VERSION} (${TODAY})"
-    fi
-fi
+RELEASES="$("${SCRIPT_DIR}/../scripts/changelog.sh" appstream)" awk '
+/<releases>/ { print ENVIRON["RELEASES"]; skip = 1 }
+skip && /<\/releases>/ { skip = 0; next }
+!skip { print }
+' "$METAINFO_SRC" >"$METAINFO_OUT"
 
 # Build the application and export to local repository
 cd "$SCRIPT_DIR"

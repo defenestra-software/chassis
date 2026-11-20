@@ -6,6 +6,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 OUT_DIR="$(pwd)"
 
 SPEC_SRC="${SCRIPT_DIR}/defenestra-chassis.spec"
+CHANGELOG_SH="${REPO_ROOT}/deploy/scripts/changelog.sh"
+METAINFO="deploy/share/metainfo/io.defenestra.Chassis.metainfo.xml"
 NAME="defenestra-chassis"
 
 cd "$REPO_ROOT"
@@ -31,7 +33,13 @@ if [ -z "${VERSION:-}" ]; then
     echo "make_srpm: tag the release commit (e.g. 'git tag v0.0.1') and re-trigger the build" >&2
     exit 1
 fi
-echo "make_srpm: using git tag version: ${VERSION}"
+
+if git describe --tags --exact-match HEAD >/dev/null 2>&1 || [ -n "$(git tag --points-at HEAD)" ]; then
+    RELEASE="1"
+else
+    RELEASE="$(git rev-list --count "v${VERSION}..HEAD").g$(git rev-parse --short HEAD)"
+fi
+echo "make_srpm: building ${NAME}-${VERSION}-${RELEASE}"
 
 SRCDIR="${NAME}-${VERSION}"
 TARBALL="${SRCDIR}.tar.gz"
@@ -48,10 +56,22 @@ tar --exclude='./.git' \
     --exclude='./deploy/flatpak/.flatpak-builder' \
     -cf - . | tar -xf - -C "${WORK}/${SRCDIR}"
 
+# AppStream <releases> extracted from CHANGELOG.md.
+RELEASES="$("$CHANGELOG_SH" appstream)" awk '
+/<releases>/ { print ENVIRON["RELEASES"]; skip = 1 }
+skip && /<\/releases>/ { skip = 0; next }
+!skip { print }
+' "$METAINFO" >"${WORK}/${SRCDIR}/${METAINFO}"
+
 (cd "$WORK" && tar czf "${OUT_DIR}/${TARBALL}" "$SRCDIR")
 
 SPEC_OUT="${OUT_DIR}/$(basename "$SPEC_SRC")"
-sed "s/^Version:.*/Version:        ${VERSION}/" "$SPEC_SRC" > "$SPEC_OUT"
+{
+    sed -e "s/^Version:.*/Version:        ${VERSION}/" \
+        -e "s/^Release:.*/Release:        ${RELEASE}%{?dist}/" \
+        "$SPEC_SRC"
+    "$CHANGELOG_SH" rpm "$VERSION" "$RELEASE"
+} >"$SPEC_OUT"
 
 cd "$OUT_DIR"
 rpmbuild -bs \

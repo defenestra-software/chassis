@@ -83,12 +83,8 @@
   <content_rating type="oars-1.1">
   </content_rating>
 
+  <!-- make_srpm.sh and build-bundle.sh fill releases from CHANGELOG.md. -->
   <releases>
-    <release version="v0.0.0" date="2026-04-05">
-      <description>
-        <p>Initial release with comprehensive hardware detection and monitoring.</p>
-      </description>
-    </release>
   </releases>
 
   <requires>

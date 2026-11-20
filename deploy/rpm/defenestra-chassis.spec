@@ -1,5 +1,6 @@
 Name:           defenestra-chassis
-Version:        0.0.1
+# Rewritten from the git tag by make_srpm.sh; %%changelog is appended from CHANGELOG.md.
+Version:        0.0.0
 Release:        1%{?dist}
 Summary:        Device manager for Linux
 
@@ -103,5 +104,3 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{_datadir}/icons/hicolor/*/apps/io.defenestra.Chassis.png
 
 %changelog
-* Sun May 10 2026 defenestra Team <support@defenestra.io> - 0.0.1-1
-- Initial RPM packaging.
