@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-20
+
 ### Added
 
 - Added a per-device USB list (`assets/usb_ids.json`) that sets the name and class of known devices by vendor and product ID.
